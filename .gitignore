@@ -11,6 +11,13 @@
 *.sln.docstates
 *.env
 
+# Cloudflare / Wrangler
+.wrangler/
+dist/
+
+# Temp files
+cookies.txt
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
