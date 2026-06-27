@@ -141,27 +141,32 @@ export function AttendancePage() {
 
   const presentCount = roster.filter((e) => e.status === 'present' || e.status === 'late').length;
   const lateCount = roster.filter((e) => e.status === 'late').length;
+  const absentCount = roster.filter((e) => e.status === 'absent').length;
+  const pctPresent = roster.length > 0 ? Math.round((presentCount / roster.length) * 100) : 0;
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Take Attendance</h1>
-          <p className="mt-1 text-sm text-slate-500">{formatDate(sessionDate)}</p>
+          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">
+            Attendance
+          </h1>
+          <p className="mt-2 text-base text-ink-400">{formatDate(sessionDate)}</p>
         </div>
         <div className="flex items-center gap-3">
           <input
             type="date"
             value={sessionDate}
             onChange={handleDateChange}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-700 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
           />
           <button
             onClick={saveAttendance}
             disabled={saving || !session}
-            className="flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Saving...' : 'Save'}
@@ -169,87 +174,140 @@ export function AttendancePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
-          <p className="text-2xl font-bold text-brand-600">{roster.length}</p>
-          <p className="text-xs text-slate-500">Enrolled</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
-          <p className="text-2xl font-bold text-green-600">{presentCount}</p>
-          <p className="text-xs text-slate-500">Present</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
-          <p className="text-2xl font-bold text-yellow-600">{lateCount}</p>
-          <p className="text-xs text-slate-500">Late</p>
-        </div>
-      </div>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* Main roster */}
+        <div className="flex-1 space-y-5">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
+            <input
+              type="text"
+              placeholder="Search students..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+            />
+          </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Search students..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-        />
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="divide-y divide-slate-100">
-          {filteredRoster.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">
-              {search ? 'No students match your search' : 'No active students found'}
-            </div>
-          ) : (
-            filteredRoster.map((entry) => (
-              <div
-                key={entry.student.id}
-                className={`flex items-center justify-between px-4 py-3 transition-colors ${
-                  entry.status === 'late' ? 'bg-yellow-50' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => togglePresent(entry.student.id)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
-                      entry.status === 'present'
-                        ? 'border-green-500 bg-green-500 text-white'
-                        : entry.status === 'late'
-                          ? 'border-yellow-500 bg-yellow-500 text-white'
-                          : 'border-slate-300 text-slate-300 hover:border-slate-400'
+          {/* Roster card */}
+          <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
+            {filteredRoster.length === 0 ? (
+              <div className="p-12 text-center text-sm text-ink-400">
+                {search ? 'No students match your search' : 'No active students found'}
+              </div>
+            ) : (
+              <div className="divide-y divide-ink-100">
+                {filteredRoster.map((entry) => (
+                  <div
+                    key={entry.student.id}
+                    className={`flex items-center justify-between px-6 py-4 transition-colors ${
+                      entry.status === 'late' ? 'bg-accent-yellow-soft' : 'hover:bg-ink-50/50'
                     }`}
-                    aria-label={`Toggle attendance for ${entry.student.name}`}
                   >
-                    {entry.status !== 'absent' ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <XIcon className="h-4 w-4" />
-                    )}
-                  </button>
-                  <div>
-                    <p className={`text-sm font-medium ${entry.status === 'late' ? 'text-yellow-800' : 'text-slate-800'}`}>
-                      {entry.student.name}
-                    </p>
-                    {entry.check_in_timestamp && (
-                      <p className="text-xs text-slate-500">
-                        Checked in: {formatTime(entry.check_in_timestamp)}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => togglePresent(entry.student.id)}
+                        className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
+                          entry.status === 'present'
+                            ? 'bg-status-success text-white shadow-sm'
+                            : entry.status === 'late'
+                              ? 'bg-accent-yellow text-white shadow-sm'
+                              : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
+                        }`}
+                        aria-label={`Toggle attendance for ${entry.student.name}`}
+                      >
+                        {entry.status !== 'absent' ? (
+                          <Check className="h-5 w-5" />
+                        ) : (
+                          <XIcon className="h-4 w-4" />
+                        )}
+                      </button>
+                      <div>
+                        <p className={`text-sm font-medium ${entry.status === 'late' ? 'text-accent-yellow-text' : 'text-ink-800'}`}>
+                          {entry.student.name}
+                        </p>
+                        {entry.check_in_timestamp && (
+                          <p className="text-xs text-ink-400">
+                            Checked in {formatTime(entry.check_in_timestamp)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {entry.status === 'late' && (
+                        <Badge variant="late">
+                          <Clock className="mr-0.5 h-3 w-3" />
+                          Late
+                        </Badge>
+                      )}
+                      {entry.status === 'present' && <Badge variant="present">Present</Badge>}
+                      {entry.status === 'absent' && <Badge variant="absent">Absent</Badge>}
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Side summary */}
+        <div className="w-full space-y-5 lg:w-72">
+          <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+            <h3 className="text-sm font-semibold text-ink-700">Session Summary</h3>
+            <div className="mt-5 flex items-center justify-center">
+              <div className="relative flex h-28 w-28 items-center justify-center">
+                <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="#f0eeeb" strokeWidth="3" />
+                  <circle
+                    cx="18" cy="18" r="15.5" fill="none"
+                    stroke="#5a9a6b" strokeWidth="3"
+                    strokeDasharray={`${pctPresent} ${100 - pctPresent}`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="absolute text-xl font-bold text-ink-800">{pctPresent}%</span>
+              </div>
+            </div>
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-ink-500">Enrolled</span>
+                <span className="text-sm font-semibold text-ink-700">{roster.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-sm text-ink-500">
+                  <span className="h-2 w-2 rounded-full bg-status-success" /> Present
+                </span>
+                <span className="text-sm font-semibold text-ink-700">{presentCount - lateCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-sm text-ink-500">
+                  <span className="h-2 w-2 rounded-full bg-accent-yellow" /> Late
+                </span>
+                <span className="text-sm font-semibold text-ink-700">{lateCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-sm text-ink-500">
+                  <span className="h-2 w-2 rounded-full bg-status-danger/60" /> Absent
+                </span>
+                <span className="text-sm font-semibold text-ink-700">{absentCount}</span>
+              </div>
+            </div>
+          </div>
+
+          {session && (
+            <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+              <h3 className="text-sm font-semibold text-ink-700">Session Details</h3>
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-ink-400">Start time</span>
+                  <span className="font-medium text-ink-700">{session.start_time}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {entry.status === 'late' && (
-                    <Badge variant="late">
-                      <Clock className="mr-1 h-3 w-3" />
-                      Late
-                    </Badge>
-                  )}
-                  {entry.status === 'present' && <Badge variant="present">Present</Badge>}
-                  {entry.status === 'absent' && <Badge variant="absent">Absent</Badge>}
+                <div className="flex justify-between">
+                  <span className="text-ink-400">Late after</span>
+                  <span className="font-medium text-ink-700">{session.late_threshold_minutes} min</span>
                 </div>
               </div>
-            ))
+            </div>
           )}
         </div>
       </div>

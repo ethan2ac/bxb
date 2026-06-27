@@ -39,94 +39,93 @@ export function WeeklyReportPage() {
 
   if (!weeks || weeks.length === 0) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-800">Weekly Reports</h1>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Weekly</h1>
+          <p className="mt-2 text-base text-ink-400">Session-by-session breakdown</p>
+        </div>
         <EmptyState title="No sessions recorded" description="Take attendance on a Sunday to see weekly reports" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Weekly Reports</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Weekly</h1>
+        <p className="mt-2 text-base text-ink-400">Session-by-session breakdown</p>
+      </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="w-8 px-2 py-3" />
-              <th className="px-4 py-3 font-medium text-slate-600">Date</th>
-              <th className="px-4 py-3 font-medium text-slate-600">Enrolled</th>
-              <th className="px-4 py-3 font-medium text-slate-600">Present</th>
-              <th className="px-4 py-3 font-medium text-slate-600">Late</th>
-              <th className="px-4 py-3 font-medium text-slate-600">Absent</th>
-              <th className="px-4 py-3 font-medium text-slate-600">Rate</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {weeks.map((week) => (
-              <Fragment key={week.session.id}>
-                <tr
-                  className="cursor-pointer hover:bg-slate-50"
-                  onClick={() => toggleExpand(week.session.id)}
-                >
-                  <td className="px-2 py-3 text-slate-400">
+      <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
+        <div className="divide-y divide-ink-100">
+          {weeks.map((week) => (
+            <Fragment key={week.session.id}>
+              <div
+                className="flex cursor-pointer items-center justify-between px-7 py-5 transition-colors hover:bg-ink-50/50"
+                onClick={() => toggleExpand(week.session.id)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="text-ink-300">
                     {expandedId === week.session.id ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronRight className="h-4 w-4" />
                     )}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-slate-700">
-                    {formatDate(week.session.session_date)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{week.enrolled}</td>
-                  <td className="px-4 py-3 text-green-600 font-medium">{week.present}</td>
-                  <td className="px-4 py-3 text-yellow-600 font-medium">{week.late}</td>
-                  <td className="px-4 py-3 text-red-600 font-medium">{week.absent}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`font-medium ${
-                        week.attendance_rate >= 80
-                          ? 'text-green-600'
-                          : week.attendance_rate >= 60
-                            ? 'text-yellow-600'
-                            : 'text-red-600'
-                      }`}
-                    >
-                      {week.attendance_rate}%
-                    </span>
-                  </td>
-                </tr>
-                {expandedId === week.session.id && (
-                  <tr key={`${week.session.id}-detail`}>
-                    <td colSpan={7} className="bg-slate-50 px-8 py-4">
-                      {loadingDetails === week.session.id ? (
-                        <LoadingSpinner className="py-4" />
-                      ) : details[week.session.id]?.length ? (
-                        <div className="space-y-1">
-                          {details[week.session.id].map((r) => (
-                            <div
-                              key={r.id}
-                              className={`flex items-center justify-between rounded px-3 py-1.5 text-sm ${
-                                r.status === 'late' ? 'bg-yellow-50' : ''
-                              }`}
-                            >
-                              <span className="text-slate-700">{r.student_name}</span>
-                              <Badge variant={r.status}>{r.status}</Badge>
-                            </div>
-                          ))}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-ink-800">
+                      {formatDate(week.session.session_date)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-400">
+                      {week.present + week.late}/{week.enrolled} attended
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="hidden items-center gap-5 text-sm sm:flex">
+                    <span className="text-status-success font-medium">{week.present} present</span>
+                    <span className="text-accent-yellow-text font-medium">{week.late} late</span>
+                    <span className="text-status-danger font-medium">{week.absent} absent</span>
+                  </div>
+                  <span
+                    className={`min-w-[3rem] text-right text-sm font-bold ${
+                      week.attendance_rate >= 80
+                        ? 'text-status-success'
+                        : week.attendance_rate >= 60
+                          ? 'text-accent-yellow-text'
+                          : 'text-status-danger'
+                    }`}
+                  >
+                    {week.attendance_rate}%
+                  </span>
+                </div>
+              </div>
+              {expandedId === week.session.id && (
+                <div className="border-t border-ink-100 bg-ink-50/50 px-12 py-5">
+                  {loadingDetails === week.session.id ? (
+                    <LoadingSpinner className="py-4" />
+                  ) : details[week.session.id]?.length ? (
+                    <div className="space-y-1.5">
+                      {details[week.session.id].map((r) => (
+                        <div
+                          key={r.id}
+                          className={`flex items-center justify-between rounded-card-sm px-4 py-2.5 text-sm ${
+                            r.status === 'late' ? 'bg-accent-yellow-soft' : 'bg-white'
+                          }`}
+                        >
+                          <span className="font-medium text-ink-700">{r.student_name}</span>
+                          <Badge variant={r.status}>{r.status}</Badge>
                         </div>
-                      ) : (
-                        <p className="text-sm text-slate-500">No attendance records</p>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-ink-400">No attendance records</p>
+                  )}
+                </div>
+              )}
+            </Fragment>
+          ))}
+        </div>
       </div>
     </div>
   );
