@@ -22,13 +22,13 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+      <div className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 mx-4 w-full max-w-lg rounded-card bg-white p-8 shadow-shell">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold tracking-tight-lg text-ink-900">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-full p-2 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600"
             aria-label="Close"
           >
             <X className="h-5 w-5" />

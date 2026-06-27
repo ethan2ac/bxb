@@ -24,7 +24,7 @@ export function App() {
 
   if (!initialized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-screen items-center justify-center bg-shell-bg">
         <LoadingSpinner />
       </div>
     );

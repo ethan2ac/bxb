@@ -1,20 +1,21 @@
 const variants = {
-  present: 'bg-green-100 text-green-800',
-  late: 'bg-yellow-100 text-yellow-800',
-  absent: 'bg-red-100 text-red-800',
-  active: 'bg-blue-100 text-blue-800',
-  archived: 'bg-slate-100 text-slate-600',
+  present: 'bg-status-success-soft text-status-success',
+  late: 'bg-accent-yellow-soft text-accent-yellow-text',
+  absent: 'bg-status-danger-soft text-status-danger',
+  active: 'bg-status-info-soft text-status-info',
+  archived: 'bg-ink-100 text-ink-500',
 } as const;
 
 interface BadgeProps {
   variant: keyof typeof variants;
   children: React.ReactNode;
+  className?: string;
 }
 
-export function Badge({ variant, children }: BadgeProps) {
+export function Badge({ variant, children, className = '' }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variants[variant]}`}
+      className={`inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium ${variants[variant]} ${className}`}
     >
       {children}
     </span>
