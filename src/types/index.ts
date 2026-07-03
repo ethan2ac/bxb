@@ -7,10 +7,12 @@ export interface User {
 
 export interface Student {
   id: string;
-  name: string;
+  english_name: string;
+  chinese_name: string | null;
   age: number;
   gender: string;
-  birthday: string;
+  birthday: string | null;
+  phone: string | null;
   description: string | null;
   active: number;
   created_at: string;
@@ -27,11 +29,13 @@ export interface Session {
   updated_at: string;
 }
 
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+
 export interface AttendanceRecord {
   id: string;
   student_id: string;
   session_id: string;
-  status: 'present' | 'absent' | 'late';
+  status: AttendanceStatus;
   check_in_timestamp: string | null;
   notes: string | null;
   student_name?: string;
@@ -43,7 +47,7 @@ export interface AttendanceRecord {
 
 export interface AttendanceEntry {
   student_id: string;
-  status: 'present' | 'absent' | 'late';
+  status: AttendanceStatus;
   check_in_timestamp?: string | null;
   notes?: string | null;
 }
@@ -53,6 +57,7 @@ export interface AttendanceSummary {
   present: number;
   late: number;
   absent: number;
+  excused: number;
   attendance_rate: number;
 }
 
@@ -62,6 +67,17 @@ export interface WeeklyReport {
   present: number;
   late: number;
   absent: number;
+  excused: number;
+  total: number;
+  attendance_rate: number;
+}
+
+export interface MonthlyTrend {
+  month: string;
+  present: number;
+  late: number;
+  absent: number;
+  excused: number;
   total: number;
   attendance_rate: number;
 }
@@ -74,11 +90,30 @@ export interface NoShowStudent {
 }
 
 export interface StudentFormData {
-  name: string;
+  english_name: string;
+  chinese_name: string;
   age: number;
   gender: string;
   birthday: string;
+  phone: string;
   description: string;
+}
+
+export interface AppSettings {
+  no_show_threshold: string;
+  default_start_time: string;
+  default_late_threshold_minutes: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  metadata: string | null;
+  created_at: string;
 }
 
 export interface ApiResponse<T> {

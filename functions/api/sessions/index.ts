@@ -1,7 +1,8 @@
-import { success, created, badRequest, conflict } from '../_shared/response';
+import { success, created, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateSession } from '../_shared/validation';
-import { generateId, now } from '../_shared/db';
+import { generateId, now, getSettings } from '../_shared/db';
+import { logAudit } from '../_shared/audit';
 
 interface Env {
   DB: D1Database;
@@ -39,10 +40,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .first();
   if (existing) return success(existing);
 
+  const settings = await getSettings(env.DB);
   const id = generateId('ses');
   const timestamp = now();
-  const startTime = (body.start_time as string) || '09:00';
-  const threshold = (body.late_threshold_minutes as number) || 15;
+  const startTime = (body.start_time as string) || settings.default_start_time;
+  const threshold = (body.late_threshold_minutes as number) || parseInt(settings.default_late_threshold_minutes, 10);
 
   try {
     await env.DB.prepare(
@@ -62,5 +64,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const session = await env.DB.prepare('SELECT * FROM sessions WHERE id = ?').bind(id).first();
+  await logAudit(env.DB, {
+    actorUserId: auth.id,
+    entityType: 'session',
+    entityId: id,
+    action: 'create',
+    metadata: { session_date: sessionDate },
+  });
   return created(session);
 };

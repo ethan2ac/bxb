@@ -13,10 +13,12 @@ const inputClass =
 
 export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }: StudentFormProps) {
   const [form, setForm] = useState<StudentFormData>({
-    name: initial?.name || '',
+    english_name: initial?.english_name || '',
+    chinese_name: initial?.chinese_name || '',
     age: initial?.age || 10,
     gender: initial?.gender || '',
     birthday: initial?.birthday || '',
+    phone: initial?.phone || '',
     description: initial?.description || '',
   });
   const [saving, setSaving] = useState(false);
@@ -42,18 +44,32 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           {error}
         </div>
       )}
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-ink-600">
-          Name
-        </label>
-        <input
-          id="name"
-          type="text"
-          required
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={inputClass}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="english_name" className="block text-sm font-medium text-ink-600">
+            English Name
+          </label>
+          <input
+            id="english_name"
+            type="text"
+            required
+            value={form.english_name}
+            onChange={(e) => setForm({ ...form, english_name: e.target.value })}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="chinese_name" className="block text-sm font-medium text-ink-600">
+            Chinese Name
+          </label>
+          <input
+            id="chinese_name"
+            type="text"
+            value={form.chinese_name}
+            onChange={(e) => setForm({ ...form, chinese_name: e.target.value })}
+            className={inputClass}
+          />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -88,18 +104,32 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           </select>
         </div>
       </div>
-      <div>
-        <label htmlFor="birthday" className="block text-sm font-medium text-ink-600">
-          Birthday
-        </label>
-        <input
-          id="birthday"
-          type="date"
-          required
-          value={form.birthday}
-          onChange={(e) => setForm({ ...form, birthday: e.target.value })}
-          className={inputClass}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="birthday" className="block text-sm font-medium text-ink-600">
+            Birthday <span className="font-normal text-ink-300">(optional)</span>
+          </label>
+          <input
+            id="birthday"
+            type="date"
+            value={form.birthday}
+            onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="phone" className="block text-sm font-medium text-ink-600">
+            Phone <span className="font-normal text-ink-300">(optional)</span>
+          </label>
+          <input
+            id="phone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            className={inputClass}
+            placeholder="+65 9123 4567"
+          />
+        </div>
       </div>
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-ink-600">

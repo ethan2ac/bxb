@@ -33,17 +33,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
          COUNT(*) as total,
          SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
          SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-         SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent
+         SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
+         SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused
        FROM attendance_records
        WHERE session_id = ?`,
     )
       .bind(sessionId)
-      .first<{ total: number; present: number; late: number; absent: number }>();
+      .first<{ total: number; present: number; late: number; absent: number; excused: number }>();
 
     const total = stats?.total || 0;
     const present = stats?.present || 0;
     const late = stats?.late || 0;
     const absent = stats?.absent || 0;
+    const excused = stats?.excused || 0;
+    const countable = enrolled - excused;
 
     weeks.push({
       session,
@@ -51,8 +54,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       present,
       late,
       absent,
+      excused,
       total,
-      attendance_rate: enrolled > 0 ? Math.round(((present + late) / enrolled) * 100) : 0,
+      attendance_rate: countable > 0 ? Math.round(((present + late) / countable) * 100) : 0,
     });
   }
 

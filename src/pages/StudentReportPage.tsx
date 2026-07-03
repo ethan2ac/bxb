@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { formatDate, formatTime } from '../utils/dates';
+import { displayName } from '../utils/students';
 import type { Student, AttendanceRecord, AttendanceSummary } from '../types';
 import { BarChart3 } from 'lucide-react';
 
@@ -70,7 +71,7 @@ export function StudentReportPage() {
               <option value="">Select a student...</option>
               {students?.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name} {!s.active ? '(Archived)' : ''}
+                  {displayName(s)} {!s.active ? '(Archived)' : ''}
                 </option>
               ))}
             </select>
@@ -90,6 +91,7 @@ export function StudentReportPage() {
               <option value="present">Present</option>
               <option value="late">Late</option>
               <option value="absent">Absent</option>
+              <option value="excused">Excused</option>
             </select>
           </div>
         </div>
@@ -108,7 +110,7 @@ export function StudentReportPage() {
       {report && !loading && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Attendance Rate</p>
               <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-success">{report.summary.attendance_rate}%</p>
@@ -120,6 +122,10 @@ export function StudentReportPage() {
             <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
               <p className="mt-2 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{report.summary.late}</p>
+            </div>
+            <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-info">{report.summary.excused}</p>
             </div>
             <div className="rounded-card bg-accent-charcoal p-6 shadow-dark-card">
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Absent</p>

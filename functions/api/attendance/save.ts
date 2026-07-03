@@ -2,6 +2,7 @@ import { success, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateAttendanceStatus } from '../_shared/validation';
 import { generateId, now, computeAttendanceStatus } from '../_shared/db';
+import { logAudit } from '../_shared/audit';
 
 interface Env {
   DB: D1Database;
@@ -47,7 +48,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (!studentExists) continue;
 
     let status = entry.status;
-    if (entry.check_in_timestamp && status !== 'absent') {
+    if (entry.check_in_timestamp && status !== 'absent' && status !== 'excused') {
       status = computeAttendanceStatus(
         entry.check_in_timestamp,
         session.start_time,
@@ -59,7 +60,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       status = 'absent';
     }
 
-    const checkIn = status === 'absent' ? null : (entry.check_in_timestamp || null);
+    const checkIn = status === 'absent' || status === 'excused' ? null : (entry.check_in_timestamp || null);
 
     statements.push(
       env.DB.prepare(
@@ -85,14 +86,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   if (statements.length > 0) {
     await env.DB.batch(statements);
+    await logAudit(env.DB, {
+      actorUserId: auth.id,
+      entityType: 'session',
+      entityId: body.session_id,
+      action: 'attendance_save',
+      metadata: { recordCount: statements.length },
+    });
   }
 
   const records = await env.DB.prepare(
-    `SELECT ar.*, s.name as student_name
+    `SELECT ar.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
      FROM attendance_records ar
      JOIN students s ON s.id = ar.student_id
      WHERE ar.session_id = ?
-     ORDER BY s.name ASC`,
+     ORDER BY s.english_name ASC`,
   )
     .bind(body.session_id)
     .all();

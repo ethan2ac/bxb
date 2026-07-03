@@ -4,11 +4,13 @@ A multi-user Sunday class attendance system built on Cloudflare Pages + D1.
 
 ## Features
 
-- Student management (add, edit, archive/restore)
+- Student management (add, edit, archive/restore) with bilingual English/Chinese names and phone numbers
 - Sunday attendance tracking with timestamps
 - Automatic late detection (configurable threshold)
-- Student and weekly attendance reports
-- No-show flagging (>3 consecutive absences)
+- Excused absences (don't count toward no-show flagging or attendance rate)
+- Student, weekly, and monthly-trend attendance reports
+- Configurable no-show flagging (default: >3 consecutive absences)
+- Audit log of all student/attendance/session/settings changes
 - Multi-user support with shared database
 - Cookie-based authentication
 - Mobile responsive design
@@ -17,7 +19,7 @@ A multi-user Sunday class attendance system built on Cloudflare Pages + D1.
 
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS
 - **Backend:** Cloudflare Pages Functions
-- **Database:** Cloudflare D1 (SQLite)
+- **Database:** Cloudflare D1 (SQLite), managed via `wrangler d1 migrations`
 - **Routing:** React Router v6
 - **State:** Zustand (client-side only)
 - **Icons:** lucide-react
@@ -37,13 +39,13 @@ A multi-user Sunday class attendance system built on Cloudflare Pages + D1.
 npm install
 ```
 
-### 2. Create the D1 database (local)
+### 2. Set up the local D1 database
 
 ```bash
-# Apply schema
-npm run db:schema
+# Apply migrations (creates tables)
+npm run db:migrate:local
 
-# Apply seed data
+# Apply seed data (admin user + real student roster)
 npm run db:seed
 ```
 
@@ -68,6 +70,8 @@ Use the seeded admin account:
 - **Email:** `admin@pyb.org`
 - **Password:** `admin123`
 
+**Change this password before going to production** — either directly in D1 (`UPDATE users SET password_hash = ...`) or by adding an admin-facing change-password flow.
+
 ## Deploying to Cloudflare
 
 ### 1. Log in to Cloudflare
@@ -90,20 +94,36 @@ Copy the `database_id` from the output and paste it into `wrangler.jsonc`:
     {
       "binding": "DB",
       "database_name": "pyb-attendance-db",
-      "database_id": "YOUR_DATABASE_ID_HERE"  // <-- paste here
+      "database_id": "YOUR_DATABASE_ID_HERE",  // <-- paste here
+      "migrations_dir": "migrations"
     }
   ]
 }
 ```
 
-### 3. Apply schema and seed data to remote
+### 3. Apply migrations and seed data to remote
 
 ```bash
-npm run db:schema:remote
+npm run db:migrate:remote
 npm run db:seed:remote
 ```
 
-### 4. Build and deploy
+`migrations/*.sql` files use `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` — they are additive and safe to re-run. **Never** run `sql/dev-reset.sql` against `--remote`; it drops every table and is local-dev-only.
+
+Future schema changes should be added as new files in `migrations/` (e.g. `wrangler d1 migrations create pyb-attendance-db <name>`), not by editing `0001_initial.sql` after it's been applied to a live database.
+
+### 4. Set the session secret (required for production)
+
+The app falls back to a default `SESSION_SECRET` for local dev convenience. **Set a real one before deploying**, or every session cookie is signed with a publicly-known key:
+
+```bash
+npx wrangler pages secret put SESSION_SECRET
+# paste a random value, e.g. from: openssl rand -hex 32
+```
+
+Or via the Cloudflare dashboard: Pages project → Settings → Environment Variables (as an encrypted secret, not a plaintext variable).
+
+### 5. Build and deploy
 
 ```bash
 npm run deploy
@@ -111,31 +131,26 @@ npm run deploy
 
 This runs `vite build` then `wrangler pages deploy dist`.
 
-### 5. Set session secret (recommended)
-
-In the Cloudflare dashboard, go to your Pages project > Settings > Environment Variables and add:
-
-| Variable | Value |
-| --- | --- |
-| `SESSION_SECRET` | A random string (e.g., `openssl rand -hex 32`) |
-
 ## Project Structure
 
 ```
 /
 ├── functions/          # Cloudflare Pages Functions (API routes)
 │   └── api/
-│       ├── _shared/    # Shared server utilities
+│       ├── _shared/    # Shared server utilities (auth, crypto, db, audit, validation)
 │       ├── auth/       # Login, logout, session check
 │       ├── students/   # CRUD + archive/restore
 │       ├── sessions/   # Session management
 │       ├── attendance/ # Attendance recording
-│       ├── reports/    # Student and weekly reports
+│       ├── reports/    # Student, weekly, and monthly reports
+│       ├── settings/   # App-wide configurable settings
+│       ├── audit-logs/ # Activity log for the Settings page
 │       ├── no-shows.ts # No-show calculation
 │       └── health.ts   # Health check
+├── migrations/         # Additive D1 schema migrations (wrangler d1 migrations)
 ├── sql/
-│   ├── schema.sql      # Database schema
-│   └── seed.sql        # Demo seed data
+│   ├── seed.sql        # Real student roster + admin user + default settings
+│   └── dev-reset.sql   # LOCAL DEV ONLY — drops all tables for a clean reset
 ├── src/
 │   ├── app/            # App root and router
 │   ├── components/     # Reusable UI components
@@ -171,16 +186,22 @@ In the Cloudflare dashboard, go to your Pages project > Settings > Environment V
 | GET | `/api/attendance/student/:id` | Student attendance history |
 | GET | `/api/reports/student/:id` | Student report (filterable) |
 | GET | `/api/reports/weekly` | Weekly summaries |
+| GET | `/api/reports/monthly?months=` | Monthly attendance-rate trend |
 | GET | `/api/no-shows` | Flagged no-show students |
+| GET | `/api/settings` | App settings (thresholds, defaults) |
+| PUT | `/api/settings` | Update app settings |
+| GET | `/api/audit-logs?limit=` | Recent activity log |
 | GET | `/api/health` | Health check |
 
 ## Business Rules
 
 - **Sunday-only:** Sessions can only be created on Sundays
 - **Late detection:** Students checking in after `start_time + threshold` are marked late
-- **No-show:** Students with >3 consecutive absences across scheduled sessions
+- **Excused absences:** Don't count toward no-show flagging and are excluded from attendance-rate denominators
+- **No-show:** Students with more than `no_show_threshold` (default 3, configurable in Settings) consecutive absences — excused absences don't break or extend the streak, they're skipped
 - **Upsert:** One attendance record per student per session; saves are idempotent
 - **Archived students** don't appear in attendance-taking or no-show calculations
+- **Audit log:** Every student/session/attendance/settings mutation is recorded with the acting user, for accountability across a multi-admin team
 
 ## Default Credentials
 
@@ -194,11 +215,13 @@ In the Cloudflare dashboard, go to your Pages project > Settings > Environment V
 
 ### Database errors on dev
 
-Make sure you've applied the schema and seed:
+Make sure you've applied migrations and seed data:
 
 ```bash
 npm run db:reset
 ```
+
+This drops all local tables, re-applies `migrations/`, and re-seeds.
 
 ### Session cookie issues
 

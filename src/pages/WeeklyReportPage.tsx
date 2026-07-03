@@ -85,6 +85,9 @@ export function WeeklyReportPage() {
                   <div className="hidden items-center gap-5 text-sm sm:flex">
                     <span className="text-status-success font-medium">{week.present} present</span>
                     <span className="text-accent-yellow-text font-medium">{week.late} late</span>
+                    {week.excused > 0 && (
+                      <span className="text-status-info font-medium">{week.excused} excused</span>
+                    )}
                     <span className="text-status-danger font-medium">{week.absent} absent</span>
                   </div>
                   <span

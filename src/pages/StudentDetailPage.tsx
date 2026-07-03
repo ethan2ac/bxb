@@ -1,9 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, UserCheck, UserX } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, UserCheck, UserX, CalendarClock } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { formatDate, formatTime } from '../utils/dates';
+import { displayName, initials } from '../utils/students';
 import type { Student, AttendanceRecord, AttendanceSummary } from '../types';
 
 export function StudentDetailPage() {
@@ -35,11 +36,11 @@ export function StudentDetailPage() {
       <div className="flex flex-col gap-6 rounded-card border border-ink-100 bg-white p-8 shadow-card md:flex-row md:items-start md:justify-between">
         <div className="flex items-center gap-5">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink-100 text-xl font-bold text-ink-500">
-            {student.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+            {initials(student)}
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight-lg text-ink-900">{student.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight-lg text-ink-900">{displayName(student)}</h1>
               <Badge variant={student.active ? 'active' : 'archived'}>
                 {student.active ? 'Active' : 'Archived'}
               </Badge>
@@ -47,7 +48,8 @@ export function StudentDetailPage() {
             <div className="mt-1.5 flex flex-wrap gap-4 text-sm text-ink-400">
               <span>Age {student.age}</span>
               <span>{student.gender}</span>
-              <span>Birthday: {formatDate(student.birthday)}</span>
+              <span>Birthday: {student.birthday ? formatDate(student.birthday) : 'Not set'}</span>
+              {student.phone && <span>Phone: {student.phone}</span>}
             </div>
             {student.description && (
               <p className="mt-3 text-sm text-ink-500">{student.description}</p>
@@ -65,7 +67,7 @@ export function StudentDetailPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
           <div className="flex items-start justify-between">
             <div>
@@ -91,6 +93,15 @@ export function StudentDetailPage() {
               <p className="mt-2 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{summary.late}</p>
             </div>
             <Clock className="h-5 w-5 text-ink-300" />
+          </div>
+        </div>
+        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-info">{summary.excused}</p>
+            </div>
+            <CalendarClock className="h-5 w-5 text-ink-300" />
           </div>
         </div>
         <div className="rounded-card bg-accent-charcoal p-6 shadow-dark-card">

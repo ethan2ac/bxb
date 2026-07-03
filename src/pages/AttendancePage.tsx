@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Save, Check, X as XIcon, Clock } from 'lucide-react';
+import { Search, Save, Check, X as XIcon, Clock, CalendarOff } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { getDefaultSessionDate, formatDate, formatTime } from '../utils/dates';
-import type { Student, Session, AttendanceRecord, AttendanceEntry } from '../types';
+import { displayName } from '../utils/students';
+import type { Student, Session, AttendanceRecord, AttendanceEntry, AttendanceStatus, AppSettings } from '../types';
 
 interface RosterEntry {
   student: Student;
-  status: 'present' | 'absent' | 'late';
+  status: AttendanceStatus;
   check_in_timestamp: string | null;
   notes: string;
   existingRecordId: string | null;
@@ -27,7 +28,10 @@ export function AttendancePage() {
   const loadAttendance = useCallback(async () => {
     setLoading(true);
     try {
-      const students = await api.get<Student[]>('/api/students');
+      const [students, settings] = await Promise.all([
+        api.get<Student[]>('/api/students'),
+        api.get<AppSettings>('/api/settings'),
+      ]);
 
       let currentSession: Session | null = null;
       let records: AttendanceRecord[] = [];
@@ -35,8 +39,8 @@ export function AttendancePage() {
       try {
         const result = await api.post<Session>('/api/sessions', {
           session_date: sessionDate,
-          start_time: '09:00',
-          late_threshold_minutes: 15,
+          start_time: settings.default_start_time,
+          late_threshold_minutes: parseInt(settings.default_late_threshold_minutes, 10),
         });
         currentSession = result;
       } catch {
@@ -80,13 +84,15 @@ export function AttendancePage() {
     loadAttendance();
   }, [loadAttendance]);
 
-  const togglePresent = (studentId: string) => {
+  // Cycles each student through: absent -> present/late (auto-detected) -> excused -> absent
+  const cycleStatus = (studentId: string) => {
     setRoster((prev) =>
       prev.map((entry) => {
         if (entry.student.id !== studentId) return entry;
+
         if (entry.status === 'absent') {
           const ts = new Date().toISOString();
-          let status: 'present' | 'late' = 'present';
+          let status: AttendanceStatus = 'present';
           if (session) {
             const [h, m] = session.start_time.split(':').map(Number);
             const threshold = new Date(
@@ -97,6 +103,11 @@ export function AttendancePage() {
           }
           return { ...entry, status, check_in_timestamp: ts };
         }
+
+        if (entry.status === 'present' || entry.status === 'late') {
+          return { ...entry, status: 'excused', check_in_timestamp: null };
+        }
+
         return { ...entry, status: 'absent', check_in_timestamp: null };
       }),
     );
@@ -136,13 +147,15 @@ export function AttendancePage() {
   };
 
   const filteredRoster = roster.filter((entry) =>
-    entry.student.name.toLowerCase().includes(search.toLowerCase()),
+    displayName(entry.student).toLowerCase().includes(search.toLowerCase()),
   );
 
-  const presentCount = roster.filter((e) => e.status === 'present' || e.status === 'late').length;
   const lateCount = roster.filter((e) => e.status === 'late').length;
+  const attendedCount = roster.filter((e) => e.status === 'present' || e.status === 'late').length;
+  const excusedCount = roster.filter((e) => e.status === 'excused').length;
   const absentCount = roster.filter((e) => e.status === 'absent').length;
-  const pctPresent = roster.length > 0 ? Math.round((presentCount / roster.length) * 100) : 0;
+  const countable = roster.length - excusedCount;
+  const pctPresent = countable > 0 ? Math.round((attendedCount / countable) * 100) : 0;
 
   if (loading) return <LoadingSpinner />;
 
@@ -188,6 +201,9 @@ export function AttendancePage() {
               className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
             />
           </div>
+          <p className="text-xs text-ink-400">
+            Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent.
+          </p>
 
           {/* Roster card */}
           <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
@@ -206,17 +222,21 @@ export function AttendancePage() {
                   >
                     <div className="flex items-center gap-4">
                       <button
-                        onClick={() => togglePresent(entry.student.id)}
+                        onClick={() => cycleStatus(entry.student.id)}
                         className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
                           entry.status === 'present'
                             ? 'bg-status-success text-white shadow-sm'
                             : entry.status === 'late'
                               ? 'bg-accent-yellow text-white shadow-sm'
-                              : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
+                              : entry.status === 'excused'
+                                ? 'bg-status-info text-white shadow-sm'
+                                : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
                         }`}
-                        aria-label={`Toggle attendance for ${entry.student.name}`}
+                        aria-label={`Toggle attendance for ${displayName(entry.student)}`}
                       >
-                        {entry.status !== 'absent' ? (
+                        {entry.status === 'excused' ? (
+                          <CalendarOff className="h-4 w-4" />
+                        ) : entry.status !== 'absent' ? (
                           <Check className="h-5 w-5" />
                         ) : (
                           <XIcon className="h-4 w-4" />
@@ -224,7 +244,7 @@ export function AttendancePage() {
                       </button>
                       <div>
                         <p className={`text-sm font-medium ${entry.status === 'late' ? 'text-accent-yellow-text' : 'text-ink-800'}`}>
-                          {entry.student.name}
+                          {displayName(entry.student)}
                         </p>
                         {entry.check_in_timestamp && (
                           <p className="text-xs text-ink-400">
@@ -242,6 +262,7 @@ export function AttendancePage() {
                       )}
                       {entry.status === 'present' && <Badge variant="present">Present</Badge>}
                       {entry.status === 'absent' && <Badge variant="absent">Absent</Badge>}
+                      {entry.status === 'excused' && <Badge variant="excused">Excused</Badge>}
                     </div>
                   </div>
                 ))}
@@ -277,13 +298,19 @@ export function AttendancePage() {
                 <span className="flex items-center gap-1.5 text-sm text-ink-500">
                   <span className="h-2 w-2 rounded-full bg-status-success" /> Present
                 </span>
-                <span className="text-sm font-semibold text-ink-700">{presentCount - lateCount}</span>
+                <span className="text-sm font-semibold text-ink-700">{attendedCount - lateCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-sm text-ink-500">
                   <span className="h-2 w-2 rounded-full bg-accent-yellow" /> Late
                 </span>
                 <span className="text-sm font-semibold text-ink-700">{lateCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-sm text-ink-500">
+                  <span className="h-2 w-2 rounded-full bg-status-info" /> Excused
+                </span>
+                <span className="text-sm font-semibold text-ink-700">{excusedCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-sm text-ink-500">

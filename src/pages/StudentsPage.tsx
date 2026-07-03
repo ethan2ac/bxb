@@ -9,18 +9,13 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { StudentForm } from '../components/StudentForm';
+import { displayName, initials } from '../utils/students';
 import type { Student, StudentFormData } from '../types';
 
-function StudentInitials({ name }: { name: string }) {
-  const initials = name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+function StudentInitials({ student }: { student: Student }) {
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-500">
-      {initials}
+      {initials(student)}
     </div>
   );
 }
@@ -36,7 +31,9 @@ export function StudentsPage() {
   const { data: students, loading, refetch } = useApi<Student[]>(url);
 
   const filtered = (students || []).filter((s) => {
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      s.english_name.toLowerCase().includes(search.toLowerCase()) ||
+      (s.chinese_name || '').includes(search);
     if (showArchived) return matchesSearch;
     return matchesSearch && s.active === 1;
   });
@@ -58,13 +55,13 @@ export function StudentsPage() {
 
   const handleArchive = async (student: Student) => {
     await api.post(`/api/students/${student.id}/archive`);
-    addToast(`${student.name} archived`, 'success');
+    addToast(`${displayName(student)} archived`, 'success');
     await refetch();
   };
 
   const handleRestore = async (student: Student) => {
     await api.post(`/api/students/${student.id}/restore`);
-    addToast(`${student.name} restored`, 'success');
+    addToast(`${displayName(student)} restored`, 'success');
     await refetch();
   };
 
@@ -133,17 +130,18 @@ export function StudentsPage() {
                 className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-ink-50/50"
               >
                 <div className="flex items-center gap-4">
-                  <StudentInitials name={student.name} />
+                  <StudentInitials student={student} />
                   <div>
                     <Link
                       to={`/students/${student.id}`}
                       className="text-sm font-medium text-ink-800 hover:text-ink-900"
                     >
-                      {student.name}
+                      {displayName(student)}
                     </Link>
                     <div className="mt-0.5 flex items-center gap-3 text-xs text-ink-400">
                       <span>Age {student.age}</span>
                       <span>{student.gender}</span>
+                      {student.phone && <span>{student.phone}</span>}
                     </div>
                   </div>
                 </div>
@@ -178,7 +176,7 @@ export function StudentsPage() {
                     <Link
                       to={`/students/${student.id}`}
                       className="rounded-full p-1.5 text-ink-300 transition-colors hover:bg-ink-100 hover:text-ink-600"
-                      aria-label={`View ${student.name}`}
+                      aria-label={`View ${displayName(student)}`}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Link>
@@ -201,7 +199,15 @@ export function StudentsPage() {
       >
         {editingStudent && (
           <StudentForm
-            initial={{ ...editingStudent, description: editingStudent.description ?? '' }}
+            initial={{
+              english_name: editingStudent.english_name,
+              chinese_name: editingStudent.chinese_name ?? '',
+              age: editingStudent.age,
+              gender: editingStudent.gender,
+              birthday: editingStudent.birthday ?? '',
+              phone: editingStudent.phone ?? '',
+              description: editingStudent.description ?? '',
+            }}
             onSubmit={handleEdit}
             onCancel={() => setEditingStudent(null)}
             submitLabel="Update"

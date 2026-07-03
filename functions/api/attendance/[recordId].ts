@@ -2,6 +2,7 @@ import { success, badRequest, notFound } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateAttendanceStatus } from '../_shared/validation';
 import { now, computeAttendanceStatus } from '../_shared/db';
+import { logAudit } from '../_shared/audit';
 
 interface Env {
   DB: D1Database;
@@ -32,7 +33,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   if (!session) return notFound('Associated session not found');
 
   let status = body.status;
-  if (body.check_in_timestamp && status !== 'absent') {
+  if (body.check_in_timestamp && status !== 'absent' && status !== 'excused') {
     status = computeAttendanceStatus(
       body.check_in_timestamp,
       session.start_time,
@@ -41,10 +42,10 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   }
 
   if (status && !validateAttendanceStatus(status)) {
-    return badRequest('Invalid status. Must be present, absent, or late');
+    return badRequest('Invalid status. Must be present, absent, late, or excused');
   }
 
-  const checkIn = status === 'absent' ? null : (body.check_in_timestamp ?? null);
+  const checkIn = status === 'absent' || status === 'excused' ? null : (body.check_in_timestamp ?? null);
 
   await env.DB.prepare(
     `UPDATE attendance_records
@@ -58,13 +59,21 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     .run();
 
   const updated = await env.DB.prepare(
-    `SELECT ar.*, s.name as student_name
+    `SELECT ar.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
      FROM attendance_records ar
      JOIN students s ON s.id = ar.student_id
      WHERE ar.id = ?`,
   )
     .bind(recordId)
     .first();
+
+  await logAudit(env.DB, {
+    actorUserId: auth.id,
+    entityType: 'attendance_record',
+    entityId: recordId,
+    action: 'update',
+    metadata: { status },
+  });
 
   return success(updated);
 };
