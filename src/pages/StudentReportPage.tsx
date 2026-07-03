@@ -3,11 +3,13 @@ import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
-import { StatCard } from '../components/StatCard';
 import { EmptyState } from '../components/EmptyState';
 import { formatDate, formatTime } from '../utils/dates';
 import type { Student, AttendanceRecord, AttendanceSummary } from '../types';
-import { BarChart3, UserCheck, Clock, UserX } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
+
+const inputClass =
+  'mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400 transition-colors';
 
 export function StudentReportPage() {
   const { data: students, loading: loadingStudents } = useApi<Student[]>('/api/students?includeArchived=true');
@@ -53,55 +55,43 @@ export function StudentReportPage() {
   if (loadingStudents) return <LoadingSpinner />;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Student Reports</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Reports</h1>
+        <p className="mt-2 text-base text-ink-400">Individual student attendance analysis</p>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Student</label>
-          <select
-            value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
-            <option value="">Select a student...</option>
-            {students?.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} {!s.active ? '(Archived)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">From</label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">To</label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
-            <option value="">All</option>
-            <option value="present">Present</option>
-            <option value="late">Late</option>
-            <option value="absent">Absent</option>
-          </select>
+      {/* Filters */}
+      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">Student</label>
+            <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className={inputClass}>
+              <option value="">Select a student...</option>
+              {students?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} {!s.active ? '(Archived)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">From</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">To</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">Status</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={inputClass}>
+              <option value="">All</option>
+              <option value="present">Present</option>
+              <option value="late">Late</option>
+              <option value="absent">Absent</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -117,46 +107,60 @@ export function StudentReportPage() {
 
       {report && !loading && (
         <>
+          {/* Stats */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="Attendance Rate" value={`${report.summary.attendance_rate}%`} icon={<UserCheck className="h-5 w-5" />} color="text-green-600" />
-            <StatCard label="Present" value={report.summary.present} icon={<BarChart3 className="h-5 w-5" />} color="text-brand-600" />
-            <StatCard label="Late" value={report.summary.late} icon={<Clock className="h-5 w-5" />} color="text-yellow-600" />
-            <StatCard label="Absent" value={report.summary.absent} icon={<UserX className="h-5 w-5" />} color="text-red-600" />
+            <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Attendance Rate</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-success">{report.summary.attendance_rate}%</p>
+            </div>
+            <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Present</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-ink-900">{report.summary.present}</p>
+            </div>
+            <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{report.summary.late}</p>
+            </div>
+            <div className="rounded-card bg-accent-charcoal p-6 shadow-dark-card">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Absent</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-white">{report.summary.absent}</p>
+            </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-4 py-3 font-medium text-slate-600">Date</th>
-                  <th className="px-4 py-3 font-medium text-slate-600">Status</th>
-                  <th className="hidden px-4 py-3 font-medium text-slate-600 sm:table-cell">Check-in</th>
-                  <th className="hidden px-4 py-3 font-medium text-slate-600 md:table-cell">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {report.records.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-500">
-                      No records found for the selected filters
-                    </td>
-                  </tr>
-                ) : (
-                  report.records.map((r) => (
-                    <tr key={r.id} className={r.status === 'late' ? 'bg-yellow-50' : ''}>
-                      <td className="px-4 py-3 text-slate-700">
+          {/* Records */}
+          <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
+            <div className="border-b border-ink-100 px-7 py-5">
+              <h2 className="text-base font-semibold text-ink-800">Records</h2>
+            </div>
+            {report.records.length === 0 ? (
+              <div className="p-12 text-center text-sm text-ink-400">No records found for the selected filters</div>
+            ) : (
+              <div className="divide-y divide-ink-100">
+                {report.records.map((r) => (
+                  <div
+                    key={r.id}
+                    className={`flex items-center justify-between px-7 py-4 transition-colors ${
+                      r.status === 'late' ? 'bg-accent-yellow-soft' : 'hover:bg-ink-50/50'
+                    }`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-ink-700">
                         {r.session_date ? formatDate(r.session_date) : '-'}
-                      </td>
-                      <td className="px-4 py-3"><Badge variant={r.status}>{r.status}</Badge></td>
-                      <td className="hidden px-4 py-3 text-slate-600 sm:table-cell">
-                        {r.check_in_timestamp ? formatTime(r.check_in_timestamp) : '-'}
-                      </td>
-                      <td className="hidden px-4 py-3 text-slate-600 md:table-cell">{r.notes || '-'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      </p>
+                      {r.check_in_timestamp && (
+                        <p className="mt-0.5 text-xs text-ink-400">
+                          Check-in: {formatTime(r.check_in_timestamp)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {r.notes && <span className="text-xs text-ink-400">{r.notes}</span>}
+                      <Badge variant={r.status}>{r.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

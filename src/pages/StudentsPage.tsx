@@ -11,6 +11,20 @@ import { Modal } from '../components/Modal';
 import { StudentForm } from '../components/StudentForm';
 import type { Student, StudentFormData } from '../types';
 
+function StudentInitials({ name }: { name: string }) {
+  const initials = name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-500">
+      {initials}
+    </div>
+  );
+}
+
 export function StudentsPage() {
   const { addToast } = useUiStore();
   const [showArchived, setShowArchived] = useState(false);
@@ -57,38 +71,42 @@ export function StudentsPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Students</h1>
+    <div className="space-y-8">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Students</h1>
+          <p className="mt-2 text-base text-ink-400">{filtered.length} enrolled students</p>
+        </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+          className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark"
         >
           <Plus className="h-4 w-4" />
           Add Student
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
           <input
             type="text"
             placeholder="Search students..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-slate-300"
-          />
-          Show archived
-        </label>
+        <button
+          onClick={() => setShowArchived(!showArchived)}
+          className={`rounded-pill border px-4 py-2.5 text-sm font-medium transition-colors ${
+            showArchived
+              ? 'border-ink-300 bg-ink-200 text-ink-700'
+              : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
+          }`}
+        >
+          {showArchived ? 'Showing archived' : 'Show archived'}
+        </button>
       </div>
 
       {filtered.length === 0 ? (
@@ -99,7 +117,7 @@ export function StudentsPage() {
             !search && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+                className="rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill hover:bg-accent-dark"
               >
                 Add Student
               </button>
@@ -107,73 +125,68 @@ export function StudentsPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-3 font-medium text-slate-600">Name</th>
-                <th className="hidden px-4 py-3 font-medium text-slate-600 sm:table-cell">Age</th>
-                <th className="hidden px-4 py-3 font-medium text-slate-600 md:table-cell">Gender</th>
-                <th className="px-4 py-3 font-medium text-slate-600">Status</th>
-                <th className="px-4 py-3 font-medium text-slate-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((student) => (
-                <tr key={student.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
+        <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
+          <div className="divide-y divide-ink-100">
+            {filtered.map((student) => (
+              <div
+                key={student.id}
+                className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-ink-50/50"
+              >
+                <div className="flex items-center gap-4">
+                  <StudentInitials name={student.name} />
+                  <div>
                     <Link
                       to={`/students/${student.id}`}
-                      className="font-medium text-brand-600 hover:text-brand-700"
+                      className="text-sm font-medium text-ink-800 hover:text-ink-900"
                     >
                       {student.name}
                     </Link>
-                  </td>
-                  <td className="hidden px-4 py-3 text-slate-600 sm:table-cell">{student.age}</td>
-                  <td className="hidden px-4 py-3 text-slate-600 md:table-cell">{student.gender}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={student.active ? 'active' : 'archived'}>
-                      {student.active ? 'Active' : 'Archived'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setEditingStudent(student)}
-                        className="rounded px-2 py-1 text-xs text-brand-600 hover:bg-brand-50"
-                      >
-                        Edit
-                      </button>
-                      {student.active ? (
-                        <button
-                          onClick={() => handleArchive(student)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-                        >
-                          <Archive className="h-3 w-3" />
-                          Archive
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRestore(student)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-green-600 hover:bg-green-50"
-                        >
-                          <RotateCcw className="h-3 w-3" />
-                          Restore
-                        </button>
-                      )}
-                      <Link
-                        to={`/students/${student.id}`}
-                        className="rounded p-1 text-slate-400 hover:text-slate-600"
-                        aria-label={`View ${student.name}`}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
+                    <div className="mt-0.5 flex items-center gap-3 text-xs text-ink-400">
+                      <span>Age {student.age}</span>
+                      <span>{student.gender}</span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={student.active ? 'active' : 'archived'}>
+                    {student.active ? 'Active' : 'Archived'}
+                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingStudent(student)}
+                      className="rounded-pill px-3 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                    >
+                      Edit
+                    </button>
+                    {student.active ? (
+                      <button
+                        onClick={() => handleArchive(student)}
+                        className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                      >
+                        <Archive className="h-3 w-3" />
+                        Archive
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRestore(student)}
+                        className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-status-success transition-colors hover:bg-status-success-soft"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Restore
+                      </button>
+                    )}
+                    <Link
+                      to={`/students/${student.id}`}
+                      className="rounded-full p-1.5 text-ink-300 transition-colors hover:bg-ink-100 hover:text-ink-600"
+                      aria-label={`View ${student.name}`}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -188,7 +201,7 @@ export function StudentsPage() {
       >
         {editingStudent && (
           <StudentForm
-            initial={editingStudent}
+            initial={{ ...editingStudent, description: editingStudent.description ?? '' }}
             onSubmit={handleEdit}
             onCancel={() => setEditingStudent(null)}
             submitLabel="Update"

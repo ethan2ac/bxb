@@ -1,11 +1,23 @@
 import { Link } from 'react-router-dom';
-import { Users, ClipboardCheck, UserX, Clock, CalendarDays, Plus, ArrowRight } from 'lucide-react';
+import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
-import { StatCard } from '../components/StatCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { formatDate } from '../utils/dates';
 import type { Student, WeeklyReport, NoShowStudent } from '../types';
+
+function ProgressBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-16 text-xs font-medium text-ink-500">{label}</span>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink-100">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-10 text-right text-xs font-semibold text-ink-600">{pct}%</span>
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const { data: students, loading: loadingStudents } = useApi<Student[]>('/api/students');
@@ -20,121 +32,152 @@ export function DashboardPage() {
   const lateCount = latestWeek?.late ?? 0;
   const noShowCount = noShows?.length || 0;
 
+  const totalRecorded = latestWeek ? latestWeek.present + latestWeek.late + latestWeek.absent : 0;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Overview of your Sunday attendance program</p>
+    <div className="space-y-8">
+      {/* Hero */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">
+            Dashboard
+          </h1>
+          <p className="mt-2 text-base text-ink-400">
+            Sunday attendance overview &mdash; everything at a glance.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Students</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-ink-900">{activeStudents}</p>
+          </div>
+          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{lateCount}</p>
+          </div>
+          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Rate</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-status-success">{attendanceRate}%</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Active Students"
-          value={activeStudents}
-          icon={<Users className="h-6 w-6" />}
-          color="text-brand-600"
-        />
-        <StatCard
-          label="Attendance Rate"
-          value={`${attendanceRate}%`}
-          icon={<ClipboardCheck className="h-6 w-6" />}
-          color="text-green-600"
-        />
-        <StatCard
-          label="Late Arrivals"
-          value={lateCount}
-          icon={<Clock className="h-6 w-6" />}
-          color="text-yellow-600"
-        />
-        <StatCard
-          label="No Shows"
-          value={noShowCount}
-          icon={<UserX className="h-6 w-6" />}
-          color="text-red-600"
-        />
-      </div>
+      {/* Progress strip */}
+      {latestWeek && (
+        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink-700">
+              Latest Session &mdash; {formatDate(latestWeek.session.session_date)}
+            </h2>
+            <span className="rounded-pill bg-ink-100 px-3 py-1 text-xs font-medium text-ink-500">
+              {latestWeek.present + latestWeek.late}/{latestWeek.enrolled} attended
+            </span>
+          </div>
+          <div className="space-y-3">
+            <ProgressBar label="Present" value={latestWeek.present} total={totalRecorded} color="bg-status-success" />
+            <ProgressBar label="Late" value={latestWeek.late} total={totalRecorded} color="bg-accent-yellow" />
+            <ProgressBar label="Absent" value={latestWeek.absent} total={totalRecorded} color="bg-status-danger/60" />
+          </div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* Three-column cards */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        {/* Quick actions */}
         <Link
           to="/attendance"
-          className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50"
+          className="group flex flex-col justify-between rounded-card border border-ink-100 bg-white p-7 shadow-card transition-all hover:shadow-card-hover"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-            <ClipboardCheck className="h-5 w-5" />
+          <div>
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-charcoal text-white">
+              <ClipboardCheck className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-ink-800">Take Attendance</h3>
+            <p className="mt-1 text-sm text-ink-400">Record today's Sunday session</p>
           </div>
-          <div className="flex-1">
-            <p className="font-medium text-slate-800">Take Attendance</p>
-            <p className="text-sm text-slate-500">Record today's attendance</p>
+          <div className="mt-5 flex items-center text-sm font-medium text-ink-400 transition-colors group-hover:text-ink-700">
+            Open <ArrowRight className="ml-1 h-4 w-4" />
           </div>
-          <ArrowRight className="h-5 w-5 text-slate-400" />
         </Link>
 
         <Link
           to="/students"
-          className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50"
+          className="group flex flex-col justify-between rounded-card border border-ink-100 bg-white p-7 shadow-card transition-all hover:shadow-card-hover"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-green-600">
-            <Plus className="h-5 w-5" />
+          <div>
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-status-info-soft text-status-info">
+              <Users className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-ink-800">Manage Students</h3>
+            <p className="mt-1 text-sm text-ink-400">Add, edit, or archive students</p>
           </div>
-          <div className="flex-1">
-            <p className="font-medium text-slate-800">Add Student</p>
-            <p className="text-sm text-slate-500">Enroll a new student</p>
+          <div className="mt-5 flex items-center text-sm font-medium text-ink-400 transition-colors group-hover:text-ink-700">
+            Open <ArrowRight className="ml-1 h-4 w-4" />
           </div>
-          <ArrowRight className="h-5 w-5 text-slate-400" />
         </Link>
 
+        {/* Dark no-shows card */}
         <Link
           to="/no-shows"
-          className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-brand-300 hover:bg-brand-50"
+          className="group flex flex-col justify-between rounded-card bg-accent-charcoal p-7 shadow-dark-card transition-all hover:bg-accent-dark"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 text-red-600">
-            <UserX className="h-5 w-5" />
+          <div>
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">
+              <UserX className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-white">No Shows</h3>
+            <p className="mt-1 text-sm text-ink-400">
+              {noShowCount > 0 ? `${noShowCount} student${noShowCount !== 1 ? 's' : ''} flagged` : 'No flagged students'}
+            </p>
           </div>
-          <div className="flex-1">
-            <p className="font-medium text-slate-800">View No Shows</p>
-            <p className="text-sm text-slate-500">{noShowCount} students flagged</p>
+          <div className="mt-5 flex items-center text-sm font-medium text-ink-500 transition-colors group-hover:text-white">
+            Review <ArrowRight className="ml-1 h-4 w-4" />
           </div>
-          <ArrowRight className="h-5 w-5 text-slate-400" />
         </Link>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 className="font-semibold text-slate-800">Recent Sessions</h2>
+      {/* Recent sessions */}
+      <div className="rounded-card border border-ink-100 bg-white shadow-card">
+        <div className="flex items-center justify-between border-b border-ink-100 px-7 py-5">
+          <h2 className="text-base font-semibold text-ink-800">Recent Sessions</h2>
           <Link
             to="/reports/weekly"
-            className="text-sm font-medium text-brand-600 hover:text-brand-700"
+            className="text-sm font-medium text-ink-400 transition-colors hover:text-ink-700"
           >
             View all
           </Link>
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-ink-100">
           {weeks && weeks.length > 0 ? (
             weeks.map((week) => (
               <div
                 key={week.session.id}
-                className="flex items-center justify-between px-5 py-3"
+                className="flex items-center justify-between px-7 py-4 transition-colors hover:bg-ink-50/50"
               >
-                <div className="flex items-center gap-3">
-                  <CalendarDays className="h-5 w-5 text-slate-400" />
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink-100 text-ink-500">
+                    <CalendarDays className="h-4 w-4" />
+                  </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-700">
+                    <p className="text-sm font-medium text-ink-700">
                       {formatDate(week.session.session_date)}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink-400">
                       {week.present + week.late}/{week.enrolled} attended
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {week.late > 0 && <Badge variant="late">{week.late} late</Badge>}
                   {week.absent > 0 && <Badge variant="absent">{week.absent} absent</Badge>}
-                  <span className="text-sm font-medium text-slate-600">{week.attendance_rate}%</span>
+                  <span className="min-w-[3rem] text-right text-sm font-semibold text-ink-600">
+                    {week.attendance_rate}%
+                  </span>
                 </div>
               </div>
             ))
           ) : (
-            <div className="p-5 text-center text-sm text-slate-500">No sessions recorded yet</div>
+            <div className="p-10 text-center text-sm text-ink-400">No sessions recorded yet</div>
           )}
         </div>
       </div>
