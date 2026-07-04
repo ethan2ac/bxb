@@ -48,7 +48,7 @@ export function StudentDetailPage() {
             </div>
             <div className="mt-1.5 flex flex-wrap gap-4 text-sm text-ink-400">
               <span>{student.level}</span>
-              {student.age != null && <span>Age {student.age}</span>}
+              {!!student.age && <span>Age {student.age}</span>}
               <span>{student.gender}</span>
               <span>Birthday: {student.birthday ? formatDate(student.birthday) : 'Not set'}</span>
               {student.phone && <span>Phone: {student.phone}</span>}

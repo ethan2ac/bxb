@@ -1,7 +1,7 @@
 import { success, created, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateStudent } from '../_shared/validation';
-import { generateId, now } from '../_shared/db';
+import { generateId, now, resolveStudentNameAndAge } from '../_shared/db';
 import { logAudit } from '../_shared/audit';
 
 interface Env {
@@ -47,6 +47,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const id = generateId('stu');
   const timestamp = now();
+  const { englishName, age } = resolveStudentNameAndAge(body);
 
   await env.DB.prepare(
     `INSERT INTO students (id, english_name, chinese_name, group_name, level, age, gender, birthday, phone, description, active, created_at, updated_at)
@@ -54,11 +55,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   )
     .bind(
       id,
-      body.english_name ? (body.english_name as string).trim() : null,
-      body.chinese_name ? (body.chinese_name as string).trim() : null,
+      englishName,
+      body.english_name && body.chinese_name ? (body.chinese_name as string).trim() : null,
       body.group_name,
       (body.level as string).trim(),
-      body.age || null,
+      age,
       (body.gender as string).trim(),
       body.birthday || null,
       body.phone ? (body.phone as string).trim() : null,
@@ -74,7 +75,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     entityType: 'student',
     entityId: id,
     action: 'create',
-    metadata: { english_name: body.english_name, group_name: body.group_name },
+    metadata: { english_name: englishName, group_name: body.group_name },
   });
   return created(student);
 };

@@ -200,7 +200,7 @@ export function StudentsPage() {
                     </Link>
                     <div className="mt-0.5 flex items-center gap-3 text-xs text-ink-400">
                       <span>{student.level}</span>
-                      {student.age != null && <span>Age {student.age}</span>}
+                      {!!student.age && <span>Age {student.age}</span>}
                       <span>{student.gender}</span>
                       {student.phone && <span>{student.phone}</span>}
                     </div>

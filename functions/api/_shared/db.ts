@@ -54,6 +54,26 @@ export function studentDisplayName(englishName: string | null, chineseName: stri
   return englishName || chineseName || '';
 }
 
+// students.english_name/age are NOT NULL at the DB level (D1 enforces foreign keys on
+// --remote, which ruled out relaxing these via a table rebuild — see migrations/0002).
+// JDY students have no English name and no tracked age, so: store their Chinese name in
+// english_name (their only name — chinese_name stays NULL for them), and use age=0 as a
+// documented "not tracked" sentinel. This resolves the value actually written to those two
+// columns regardless of what the client sent.
+export function resolveStudentNameAndAge(body: {
+  english_name?: unknown;
+  chinese_name?: unknown;
+  age?: unknown;
+}): { englishName: string; age: number } {
+  const englishName = body.english_name
+    ? String(body.english_name).trim()
+    : body.chinese_name
+      ? String(body.chinese_name).trim()
+      : '';
+  const age = typeof body.age === 'number' && body.age > 0 ? body.age : 0;
+  return { englishName, age };
+}
+
 export async function calculateNoShows(
   db: D1Database,
   threshold: number = DEFAULT_NO_SHOW_THRESHOLD,
