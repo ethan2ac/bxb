@@ -4,7 +4,7 @@ import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { formatDate, formatTime } from '../utils/dates';
-import { displayName, initials } from '../utils/students';
+import { displayName, initials, groupLabel } from '../utils/students';
 import type { Student, AttendanceRecord, AttendanceSummary } from '../types';
 
 export function StudentDetailPage() {
@@ -41,12 +41,14 @@ export function StudentDetailPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight-lg text-ink-900">{displayName(student)}</h1>
+              <Badge variant={groupLabel(student) === 'JDY' ? 'JDY' : 'BY'}>{groupLabel(student)}</Badge>
               <Badge variant={student.active ? 'active' : 'archived'}>
                 {student.active ? 'Active' : 'Archived'}
               </Badge>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-4 text-sm text-ink-400">
-              <span>Age {student.age}</span>
+              <span>{student.level}</span>
+              {student.age != null && <span>Age {student.age}</span>}
               <span>{student.gender}</span>
               <span>Birthday: {student.birthday ? formatDate(student.birthday) : 'Not set'}</span>
               {student.phone && <span>Phone: {student.phone}</span>}

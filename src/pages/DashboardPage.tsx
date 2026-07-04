@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight, TrendingUp } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
+import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
 import type { Student, WeeklyReport, NoShowStudent, MonthlyTrend } from '../types';
 
@@ -25,10 +27,13 @@ function monthLabel(month: string): string {
 }
 
 export function DashboardPage() {
-  const { data: students, loading: loadingStudents } = useApi<Student[]>('/api/students');
-  const { data: weeks, loading: loadingWeeks } = useApi<WeeklyReport[]>('/api/reports/weekly?limit=4');
-  const { data: noShows, loading: loadingNoShows } = useApi<NoShowStudent[]>('/api/no-shows');
-  const { data: trend, loading: loadingTrend } = useApi<MonthlyTrend[]>('/api/reports/monthly?months=6');
+  const [group, setGroup] = useState<GroupToggleValue>('ALL');
+  const groupQs = group !== 'ALL' ? `group=${group}&` : '';
+
+  const { data: students, loading: loadingStudents } = useApi<Student[]>(`/api/students?${groupQs}`);
+  const { data: weeks, loading: loadingWeeks } = useApi<WeeklyReport[]>(`/api/reports/weekly?${groupQs}limit=4`);
+  const { data: noShows, loading: loadingNoShows } = useApi<NoShowStudent[]>(`/api/no-shows?${groupQs}`);
+  const { data: trend, loading: loadingTrend } = useApi<MonthlyTrend[]>(`/api/reports/monthly?${groupQs}months=6`);
 
   if (loadingStudents || loadingWeeks || loadingNoShows || loadingTrend) return <LoadingSpinner />;
 
@@ -51,6 +56,9 @@ export function DashboardPage() {
           <p className="mt-2 text-base text-ink-400">
             Sunday attendance overview &mdash; everything at a glance.
           </p>
+          <div className="mt-4">
+            <GroupToggle value={group} onChange={setGroup} />
+          </div>
         </div>
         <div className="flex gap-3">
           <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { Save, UserPlus } from 'lucide-react';
 import { useUiStore } from '../store/ui';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { formatDateTime } from '../utils/dates';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import type { AppSettings, AuditLog } from '../types';
+import type { AppSettings, AuditLog, TeamUser } from '../types';
 
 const inputClass =
   'mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400 transition-colors';
@@ -15,19 +15,27 @@ const ACTION_LABELS: Record<string, string> = {
   update: 'updated',
   archive: 'archived',
   restore: 'restored',
+  delete: 'deleted',
   attendance_save: 'saved attendance for',
+  forecast_save: 'saved a forecast for',
 };
 
 export function SettingsPage() {
   const { addToast } = useUiStore();
   const { data: settings, loading: loadingSettings, refetch } = useApi<AppSettings>('/api/settings');
   const { data: logs, loading: loadingLogs, refetch: refetchLogs } = useApi<AuditLog[]>('/api/audit-logs?limit=15');
+  const { data: teamUsers, loading: loadingTeam, refetch: refetchTeam } = useApi<TeamUser[]>('/api/users');
 
   const [startTime, setStartTime] = useState('09:00');
   const [threshold, setThreshold] = useState(15);
   const [noShowThreshold, setNoShowThreshold] = useState(3);
   const [saving, setSaving] = useState(false);
   const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+  const [teammateName, setTeammateName] = useState('');
+  const [teammateEmail, setTeammateEmail] = useState('');
+  const [teammatePassword, setTeammatePassword] = useState('');
+  const [addingTeammate, setAddingTeammate] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -51,6 +59,23 @@ export function SettingsPage() {
       addToast(e instanceof Error ? e.message : 'Failed to save settings', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddTeammate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingTeammate(true);
+    try {
+      await api.post('/api/users', { name: teammateName, email: teammateEmail, password: teammatePassword });
+      addToast('Teammate added', 'success');
+      setTeammateName('');
+      setTeammateEmail('');
+      setTeammatePassword('');
+      await Promise.all([refetchTeam(), refetchLogs()]);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : 'Failed to add teammate', 'error');
+    } finally {
+      setAddingTeammate(false);
     }
   };
 
@@ -139,6 +164,60 @@ export function SettingsPage() {
                 {saving ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
+          </div>
+
+          <div className="rounded-card border border-ink-100 bg-white p-8 shadow-card">
+            <h2 className="text-base font-semibold text-ink-800">Team</h2>
+            <p className="mt-1 text-xs text-ink-400">
+              Add a teammate their own login so multiple people can update attendance at once.
+            </p>
+            {loadingTeam ? (
+              <LoadingSpinner className="py-4" />
+            ) : (
+              <div className="mt-4 space-y-2">
+                {teamUsers?.map((u) => (
+                  <div key={u.id} className="flex items-center justify-between rounded-card-sm bg-ink-50/50 px-4 py-2.5 text-sm">
+                    <span className="font-medium text-ink-700">{u.name}</span>
+                    <span className="text-ink-400">{u.email}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <form onSubmit={handleAddTeammate} className="mt-5 space-y-3 border-t border-ink-100 pt-5">
+              <input
+                type="text"
+                required
+                placeholder="Name"
+                value={teammateName}
+                onChange={(e) => setTeammateName(e.target.value)}
+                className={inputClass}
+              />
+              <input
+                type="email"
+                required
+                placeholder="Email"
+                value={teammateEmail}
+                onChange={(e) => setTeammateEmail(e.target.value)}
+                className={inputClass}
+              />
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Password (min. 6 characters)"
+                value={teammatePassword}
+                onChange={(e) => setTeammatePassword(e.target.value)}
+                className={inputClass}
+              />
+              <button
+                type="submit"
+                disabled={addingTeammate}
+                className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-5 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
+              >
+                <UserPlus className="h-4 w-4" />
+                {addingTeammate ? 'Adding...' : 'Add Teammate'}
+              </button>
+            </form>
           </div>
 
           <div className="rounded-card border border-ink-100 bg-white p-8 shadow-card">

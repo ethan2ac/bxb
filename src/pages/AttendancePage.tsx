@@ -29,7 +29,7 @@ export function AttendancePage() {
     setLoading(true);
     try {
       const [students, settings] = await Promise.all([
-        api.get<Student[]>('/api/students'),
+        api.get<Student[]>('/api/students?group=BY'),
         api.get<AppSettings>('/api/settings'),
       ]);
 

@@ -34,13 +34,15 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   if (errors.length > 0) return badRequest(errors.map((e) => e.message).join(', '));
 
   await env.DB.prepare(
-    `UPDATE students SET english_name = ?, chinese_name = ?, age = ?, gender = ?, birthday = ?, phone = ?, description = ?, updated_at = ?
+    `UPDATE students SET english_name = ?, chinese_name = ?, group_name = ?, level = ?, age = ?, gender = ?, birthday = ?, phone = ?, description = ?, updated_at = ?
      WHERE id = ?`,
   )
     .bind(
-      (body.english_name as string).trim(),
+      body.english_name ? (body.english_name as string).trim() : null,
       body.chinese_name ? (body.chinese_name as string).trim() : null,
-      body.age,
+      body.group_name,
+      (body.level as string).trim(),
+      body.age || null,
       (body.gender as string).trim(),
       body.birthday || null,
       body.phone ? (body.phone as string).trim() : null,
@@ -58,7 +60,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     entityType: 'student',
     entityId: params.id as string,
     action: 'update',
-    metadata: { english_name: body.english_name },
+    metadata: { english_name: body.english_name, group_name: body.group_name },
   });
   return success(student);
 };

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UserX, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
 import type { NoShowStudent, AppSettings } from '../types';
 
@@ -17,7 +19,9 @@ function nameInitials(name: string): string {
 }
 
 export function NoShowsPage() {
-  const { data: noShows, loading } = useApi<NoShowStudent[]>('/api/no-shows');
+  const [group, setGroup] = useState<GroupToggleValue>('ALL');
+  const groupQs = group !== 'ALL' ? `?group=${group}` : '';
+  const { data: noShows, loading } = useApi<NoShowStudent[]>(`/api/no-shows${groupQs}`);
   const { data: settings } = useApi<AppSettings>('/api/settings');
   const threshold = settings ? parseInt(settings.no_show_threshold, 10) : 3;
 
@@ -30,6 +34,9 @@ export function NoShowsPage() {
         <p className="mt-2 text-base text-ink-400">
           Students with more than {threshold} consecutive absences
         </p>
+        <div className="mt-4">
+          <GroupToggle value={group} onChange={setGroup} />
+        </div>
       </div>
 
       {!noShows || noShows.length === 0 ? (

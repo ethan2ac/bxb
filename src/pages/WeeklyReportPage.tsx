@@ -4,12 +4,15 @@ import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
+import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
 import type { WeeklyReport, AttendanceRecord } from '../types';
 import { api } from '../lib/api';
 
 export function WeeklyReportPage() {
-  const { data: weeks, loading } = useApi<WeeklyReport[]>('/api/reports/weekly?limit=20');
+  const [group, setGroup] = useState<GroupToggleValue>('ALL');
+  const groupQs = group !== 'ALL' ? `group=${group}&` : '';
+  const { data: weeks, loading } = useApi<WeeklyReport[]>(`/api/reports/weekly?${groupQs}limit=20`);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, AttendanceRecord[]>>({});
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
@@ -43,6 +46,9 @@ export function WeeklyReportPage() {
         <div>
           <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Weekly</h1>
           <p className="mt-2 text-base text-ink-400">Session-by-session breakdown</p>
+          <div className="mt-4">
+            <GroupToggle value={group} onChange={setGroup} />
+          </div>
         </div>
         <EmptyState title="No sessions recorded" description="Take attendance on a Sunday to see weekly reports" />
       </div>
@@ -54,6 +60,9 @@ export function WeeklyReportPage() {
       <div>
         <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Weekly</h1>
         <p className="mt-2 text-base text-ink-400">Session-by-session breakdown</p>
+        <div className="mt-4">
+          <GroupToggle value={group} onChange={setGroup} />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">

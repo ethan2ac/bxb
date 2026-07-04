@@ -5,6 +5,8 @@ const variants = {
   excused: 'bg-status-info-soft text-status-info',
   active: 'bg-status-info-soft text-status-info',
   archived: 'bg-ink-100 text-ink-500',
+  BY: 'bg-accent-charcoal/10 text-ink-700',
+  JDY: 'bg-status-info-soft text-status-info',
 } as const;
 
 interface BadgeProps {

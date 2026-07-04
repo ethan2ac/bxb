@@ -49,13 +49,26 @@ export interface NoShowStudent {
 
 export const DEFAULT_NO_SHOW_THRESHOLD = 3;
 
+export function studentDisplayName(englishName: string | null, chineseName: string | null): string {
+  if (englishName && chineseName) return `${englishName}/${chineseName}`;
+  return englishName || chineseName || '';
+}
+
 export async function calculateNoShows(
   db: D1Database,
   threshold: number = DEFAULT_NO_SHOW_THRESHOLD,
+  groupName?: string,
 ): Promise<NoShowStudent[]> {
+  let studentQuery = 'SELECT id, english_name, chinese_name FROM students WHERE active = 1';
+  const studentBindings: unknown[] = [];
+  if (groupName) {
+    studentQuery += ' AND group_name = ?';
+    studentBindings.push(groupName);
+  }
   const students = await db
-    .prepare('SELECT id, english_name, chinese_name FROM students WHERE active = 1')
-    .all<{ id: string; english_name: string; chinese_name: string | null }>();
+    .prepare(studentQuery)
+    .bind(...studentBindings)
+    .all<{ id: string; english_name: string | null; chinese_name: string | null }>();
 
   const sessions = await db
     .prepare('SELECT id, session_date FROM sessions ORDER BY session_date DESC')
@@ -110,9 +123,7 @@ export async function calculateNoShows(
       }
       noShows.push({
         id: student.id,
-        name: student.chinese_name
-          ? `${student.english_name}/${student.chinese_name}`
-          : student.english_name,
+        name: studentDisplayName(student.english_name, student.chinese_name),
         consecutive_absences: consecutiveAbsences,
         last_attended_date: lastAttended,
       });

@@ -11,6 +11,9 @@ import { StudentDetailPage } from '../pages/StudentDetailPage';
 import { StudentReportPage } from '../pages/StudentReportPage';
 import { WeeklyReportPage } from '../pages/WeeklyReportPage';
 import { NoShowsPage } from '../pages/NoShowsPage';
+import { SchedulePage } from '../pages/SchedulePage';
+import { EventAttendancePage } from '../pages/EventAttendancePage';
+import { ForecastPage } from '../pages/ForecastPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -48,6 +51,9 @@ export function App() {
           <Route path="reports/student" element={<StudentReportPage />} />
           <Route path="reports/weekly" element={<WeeklyReportPage />} />
           <Route path="no-shows" element={<NoShowsPage />} />
+          <Route path="schedule" element={<SchedulePage />} />
+          <Route path="schedule/:eventId" element={<EventAttendancePage />} />
+          <Route path="forecast" element={<ForecastPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
