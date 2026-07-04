@@ -7,6 +7,25 @@ export function now(): string {
   return new Date().toISOString();
 }
 
+export const DEFAULT_SETTINGS = {
+  no_show_threshold: '3',
+  default_start_time: '09:00',
+  default_late_threshold_minutes: '15',
+};
+
+export type SettingsMap = typeof DEFAULT_SETTINGS;
+
+export async function getSettings(db: D1Database): Promise<SettingsMap> {
+  const result = await db.prepare('SELECT key, value FROM settings').all<{ key: string; value: string }>();
+  const settings = { ...DEFAULT_SETTINGS };
+  for (const row of result.results || []) {
+    if (row.key in settings) {
+      (settings as Record<string, string>)[row.key] = row.value;
+    }
+  }
+  return settings;
+}
+
 export function computeAttendanceStatus(
   checkInTimestamp: string | null,
   sessionStartTime: string,
@@ -28,10 +47,28 @@ export interface NoShowStudent {
   last_attended_date: string | null;
 }
 
-export async function calculateNoShows(db: D1Database): Promise<NoShowStudent[]> {
+export const DEFAULT_NO_SHOW_THRESHOLD = 3;
+
+export function studentDisplayName(englishName: string | null, chineseName: string | null): string {
+  if (englishName && chineseName) return `${englishName}/${chineseName}`;
+  return englishName || chineseName || '';
+}
+
+export async function calculateNoShows(
+  db: D1Database,
+  threshold: number = DEFAULT_NO_SHOW_THRESHOLD,
+  groupName?: string,
+): Promise<NoShowStudent[]> {
+  let studentQuery = 'SELECT id, english_name, chinese_name FROM students WHERE active = 1';
+  const studentBindings: unknown[] = [];
+  if (groupName) {
+    studentQuery += ' AND group_name = ?';
+    studentBindings.push(groupName);
+  }
   const students = await db
-    .prepare('SELECT id, name FROM students WHERE active = 1')
-    .all<{ id: string; name: string }>();
+    .prepare(studentQuery)
+    .bind(...studentBindings)
+    .all<{ id: string; english_name: string | null; chinese_name: string | null }>();
 
   const sessions = await db
     .prepare('SELECT id, session_date FROM sessions ORDER BY session_date DESC')
@@ -69,10 +106,13 @@ export async function calculateNoShows(db: D1Database): Promise<NoShowStudent[]>
         if (!lastAttended) lastAttended = session.session_date;
         break;
       }
+      // Excused absences are skipped entirely: they neither break the streak
+      // nor count toward it, since the student had a legitimate reason to miss.
+      if (status === 'excused') continue;
       consecutiveAbsences++;
     }
 
-    if (consecutiveAbsences > 3) {
+    if (consecutiveAbsences > threshold) {
       if (!lastAttended && records.results) {
         for (const r of records.results) {
           if (r.status === 'present' || r.status === 'late') {
@@ -83,7 +123,7 @@ export async function calculateNoShows(db: D1Database): Promise<NoShowStudent[]>
       }
       noShows.push({
         id: student.id,
-        name: student.name,
+        name: studentDisplayName(student.english_name, student.chinese_name),
         consecutive_absences: consecutiveAbsences,
         last_attended_date: lastAttended,
       });

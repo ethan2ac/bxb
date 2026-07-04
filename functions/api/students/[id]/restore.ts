@@ -1,6 +1,7 @@
 import { success, notFound } from '../../_shared/response';
 import { requireAuth } from '../../_shared/auth';
 import { now } from '../../_shared/db';
+import { logAudit } from '../../_shared/audit';
 
 interface Env {
   DB: D1Database;
@@ -23,5 +24,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   const updated = await env.DB.prepare('SELECT * FROM students WHERE id = ?')
     .bind(params.id as string)
     .first();
+  await logAudit(env.DB, {
+    actorUserId: auth.id,
+    entityType: 'student',
+    entityId: params.id as string,
+    action: 'restore',
+  });
   return success(updated);
 };

@@ -27,6 +27,10 @@ class ApiClient {
   put<T>(url: string, body?: unknown): Promise<T> {
     return this.request<T>(url, { method: 'PUT', body: JSON.stringify(body) });
   }
+
+  delete<T>(url: string): Promise<T> {
+    return this.request<T>(url, { method: 'DELETE' });
+  }
 }
 
 export class ApiError extends Error {

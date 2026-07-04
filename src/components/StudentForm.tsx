@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { StudentFormData } from '../types';
+import { BY_LEVELS, JDY_ROLES } from '../types';
+import type { StudentFormData, GroupName } from '../types';
 
 interface StudentFormProps {
   initial?: Partial<StudentFormData>;
@@ -13,14 +14,24 @@ const inputClass =
 
 export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }: StudentFormProps) {
   const [form, setForm] = useState<StudentFormData>({
-    name: initial?.name || '',
-    age: initial?.age || 10,
+    english_name: initial?.english_name || '',
+    chinese_name: initial?.chinese_name || '',
+    group_name: initial?.group_name || 'BY',
+    level: initial?.level || '',
+    age: initial?.age ?? '',
     gender: initial?.gender || '',
     birthday: initial?.birthday || '',
+    phone: initial?.phone || '',
     description: initial?.description || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const levelOptions = form.group_name === 'JDY' ? JDY_ROLES : BY_LEVELS;
+
+  const handleGroupChange = (group_name: GroupName) => {
+    setForm({ ...form, group_name, level: '', age: group_name === 'JDY' ? '' : form.age });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,34 +53,86 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           {error}
         </div>
       )}
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium text-ink-600">
-          Name
-        </label>
-        <input
-          id="name"
-          type="text"
-          required
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={inputClass}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="group_name" className="block text-sm font-medium text-ink-600">
+            Group
+          </label>
+          <select
+            id="group_name"
+            required
+            value={form.group_name}
+            onChange={(e) => handleGroupChange(e.target.value as GroupName)}
+            className={inputClass}
+          >
+            <option value="BY">BY</option>
+            <option value="JDY">JDY</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="level" className="block text-sm font-medium text-ink-600">
+            {form.group_name === 'JDY' ? 'Role' : 'Level'}
+          </label>
+          <select
+            id="level"
+            required
+            value={form.level}
+            onChange={(e) => setForm({ ...form, level: e.target.value })}
+            className={inputClass}
+          >
+            <option value="">Select...</option>
+            {levelOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="age" className="block text-sm font-medium text-ink-600">
-            Age
+          <label htmlFor="english_name" className="block text-sm font-medium text-ink-600">
+            English Name {form.group_name === 'JDY' && <span className="font-normal text-ink-300">(optional)</span>}
           </label>
           <input
-            id="age"
-            type="number"
-            required
-            min={1}
-            value={form.age}
-            onChange={(e) => setForm({ ...form, age: parseInt(e.target.value, 10) || 0 })}
+            id="english_name"
+            type="text"
+            required={form.group_name === 'BY'}
+            value={form.english_name}
+            onChange={(e) => setForm({ ...form, english_name: e.target.value })}
             className={inputClass}
           />
         </div>
+        <div>
+          <label htmlFor="chinese_name" className="block text-sm font-medium text-ink-600">
+            Chinese Name {form.group_name === 'BY' && <span className="font-normal text-ink-300">(optional)</span>}
+          </label>
+          <input
+            id="chinese_name"
+            type="text"
+            required={form.group_name === 'JDY'}
+            value={form.chinese_name}
+            onChange={(e) => setForm({ ...form, chinese_name: e.target.value })}
+            className={inputClass}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {form.group_name === 'BY' && (
+          <div>
+            <label htmlFor="age" className="block text-sm font-medium text-ink-600">
+              Age
+            </label>
+            <input
+              id="age"
+              type="number"
+              min={1}
+              value={form.age}
+              onChange={(e) => setForm({ ...form, age: e.target.value ? parseInt(e.target.value, 10) : '' })}
+              className={inputClass}
+            />
+          </div>
+        )}
         <div>
           <label htmlFor="gender" className="block text-sm font-medium text-ink-600">
             Gender
@@ -88,18 +151,32 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           </select>
         </div>
       </div>
-      <div>
-        <label htmlFor="birthday" className="block text-sm font-medium text-ink-600">
-          Birthday
-        </label>
-        <input
-          id="birthday"
-          type="date"
-          required
-          value={form.birthday}
-          onChange={(e) => setForm({ ...form, birthday: e.target.value })}
-          className={inputClass}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="birthday" className="block text-sm font-medium text-ink-600">
+            Birthday <span className="font-normal text-ink-300">(optional)</span>
+          </label>
+          <input
+            id="birthday"
+            type="date"
+            value={form.birthday}
+            onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="phone" className="block text-sm font-medium text-ink-600">
+            Phone <span className="font-normal text-ink-300">(optional)</span>
+          </label>
+          <input
+            id="phone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            className={inputClass}
+            placeholder="+65 9123 4567"
+          />
+        </div>
       </div>
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-ink-600">

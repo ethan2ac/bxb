@@ -34,11 +34,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const records = await env.DB.prepare(
-    `SELECT ar.*, s.name as student_name
+    `SELECT ar.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
      FROM attendance_records ar
      JOIN students s ON s.id = ar.student_id
      WHERE ar.session_id = ?
-     ORDER BY s.name ASC`,
+     ORDER BY s.english_name ASC`,
   )
     .bind(session.id as string)
     .all();

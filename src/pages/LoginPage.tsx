@@ -43,17 +43,17 @@ export function LoginPage() {
             )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-ink-600">
-                Email
+                Username
               </label>
               <input
                 id="email"
-                type="email"
+                type="text"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={inputClass}
-                placeholder="admin@pyb.org"
+                placeholder="admin"
               />
             </div>
             <div>

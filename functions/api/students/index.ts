@@ -2,6 +2,7 @@ import { success, created, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateStudent } from '../_shared/validation';
 import { generateId, now } from '../_shared/db';
+import { logAudit } from '../_shared/audit';
 
 interface Env {
   DB: D1Database;
@@ -14,12 +15,25 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   const url = new URL(request.url);
   const includeArchived = url.searchParams.get('includeArchived') === 'true';
+  const group = url.searchParams.get('group');
+  const level = url.searchParams.get('level');
 
   let query = 'SELECT * FROM students';
-  if (!includeArchived) query += ' WHERE active = 1';
-  query += ' ORDER BY name ASC';
+  const conditions: string[] = [];
+  const bindings: unknown[] = [];
+  if (!includeArchived) conditions.push('active = 1');
+  if (group) {
+    conditions.push('group_name = ?');
+    bindings.push(group);
+  }
+  if (level) {
+    conditions.push('level = ?');
+    bindings.push(level);
+  }
+  if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
+  query += ' ORDER BY english_name ASC';
 
-  const result = await env.DB.prepare(query).all();
+  const result = await env.DB.prepare(query).bind(...bindings).all();
   return success(result.results);
 };
 
@@ -35,12 +49,32 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const timestamp = now();
 
   await env.DB.prepare(
-    `INSERT INTO students (id, name, age, gender, birthday, description, active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    `INSERT INTO students (id, english_name, chinese_name, group_name, level, age, gender, birthday, phone, description, active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
   )
-    .bind(id, (body.name as string).trim(), body.age, (body.gender as string).trim(), body.birthday, body.description || null, timestamp, timestamp)
+    .bind(
+      id,
+      body.english_name ? (body.english_name as string).trim() : null,
+      body.chinese_name ? (body.chinese_name as string).trim() : null,
+      body.group_name,
+      (body.level as string).trim(),
+      body.age || null,
+      (body.gender as string).trim(),
+      body.birthday || null,
+      body.phone ? (body.phone as string).trim() : null,
+      body.description || null,
+      timestamp,
+      timestamp,
+    )
     .run();
 
   const student = await env.DB.prepare('SELECT * FROM students WHERE id = ?').bind(id).first();
+  await logAudit(env.DB, {
+    actorUserId: auth.id,
+    entityType: 'student',
+    entityId: id,
+    action: 'create',
+    metadata: { english_name: body.english_name, group_name: body.group_name },
+  });
   return created(student);
 };

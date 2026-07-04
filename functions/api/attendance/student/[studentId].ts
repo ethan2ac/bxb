@@ -30,6 +30,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
   const present = records.results?.filter((r) => r.status === 'present').length || 0;
   const late = records.results?.filter((r) => r.status === 'late').length || 0;
   const absent = records.results?.filter((r) => r.status === 'absent').length || 0;
+  const excused = records.results?.filter((r) => r.status === 'excused').length || 0;
+  const countable = total - excused;
 
   return success({
     student,
@@ -39,7 +41,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       present,
       late,
       absent,
-      attendance_rate: total > 0 ? Math.round(((present + late) / total) * 100) : 0,
+      excused,
+      attendance_rate: countable > 0 ? Math.round(((present + late) / countable) * 100) : 0,
     },
   });
 };

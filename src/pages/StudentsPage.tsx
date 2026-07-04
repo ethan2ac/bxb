@@ -9,37 +9,50 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { StudentForm } from '../components/StudentForm';
-import type { Student, StudentFormData } from '../types';
+import { displayName, initials, groupLabel } from '../utils/students';
+import { BY_LEVELS, JDY_ROLES } from '../types';
+import type { Student, StudentFormData, GroupName } from '../types';
 
-function StudentInitials({ name }: { name: string }) {
-  const initials = name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+function StudentInitials({ student }: { student: Student }) {
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-500">
-      {initials}
+      {initials(student)}
     </div>
   );
 }
 
+type GroupFilter = 'ALL' | GroupName;
+
 export function StudentsPage() {
   const { addToast } = useUiStore();
   const [showArchived, setShowArchived] = useState(false);
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL');
+  const [levelFilter, setLevelFilter] = useState('');
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
-  const url = showArchived ? '/api/students?includeArchived=true' : '/api/students';
+  const params = new URLSearchParams();
+  if (showArchived) params.set('includeArchived', 'true');
+  if (groupFilter !== 'ALL') params.set('group', groupFilter);
+  if (levelFilter) params.set('level', levelFilter);
+  const url = `/api/students?${params.toString()}`;
   const { data: students, loading, refetch } = useApi<Student[]>(url);
 
   const filtered = (students || []).filter((s) => {
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      (s.english_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.chinese_name || '').includes(search);
     if (showArchived) return matchesSearch;
     return matchesSearch && s.active === 1;
   });
+
+  const levelOptions = groupFilter === 'JDY' ? JDY_ROLES : BY_LEVELS;
+
+  const handleGroupFilterChange = (group: GroupFilter) => {
+    setGroupFilter(group);
+    setLevelFilter('');
+  };
 
   const handleAdd = async (data: StudentFormData) => {
     await api.post('/api/students', data);
@@ -58,13 +71,13 @@ export function StudentsPage() {
 
   const handleArchive = async (student: Student) => {
     await api.post(`/api/students/${student.id}/archive`);
-    addToast(`${student.name} archived`, 'success');
+    addToast(`${displayName(student)} archived`, 'success');
     await refetch();
   };
 
   const handleRestore = async (student: Student) => {
     await api.post(`/api/students/${student.id}/restore`);
-    addToast(`${student.name} restored`, 'success');
+    addToast(`${displayName(student)} restored`, 'success');
     await refetch();
   };
 
@@ -84,6 +97,50 @@ export function StudentsPage() {
           <Plus className="h-4 w-4" />
           Add Student
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {(['ALL', 'BY', 'JDY'] as GroupFilter[]).map((g) => (
+          <button
+            key={g}
+            onClick={() => handleGroupFilterChange(g)}
+            className={`rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
+              groupFilter === g
+                ? 'border-accent-charcoal bg-accent-charcoal text-white'
+                : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
+            }`}
+          >
+            {g === 'ALL' ? 'All Groups' : g}
+          </button>
+        ))}
+        {groupFilter !== 'ALL' && (
+          <>
+            <span className="mx-1 h-5 w-px bg-ink-200" />
+            <button
+              onClick={() => setLevelFilter('')}
+              className={`rounded-pill border px-3 py-2 text-xs font-medium transition-colors ${
+                levelFilter === ''
+                  ? 'border-ink-300 bg-ink-200 text-ink-700'
+                  : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
+              }`}
+            >
+              All {groupFilter === 'JDY' ? 'Roles' : 'Levels'}
+            </button>
+            {levelOptions.map((lvl) => (
+              <button
+                key={lvl}
+                onClick={() => setLevelFilter(lvl)}
+                className={`rounded-pill border px-3 py-2 text-xs font-medium transition-colors ${
+                  levelFilter === lvl
+                    ? 'border-ink-300 bg-ink-200 text-ink-700'
+                    : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
+                }`}
+              >
+                {lvl}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -133,21 +190,24 @@ export function StudentsPage() {
                 className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-ink-50/50"
               >
                 <div className="flex items-center gap-4">
-                  <StudentInitials name={student.name} />
+                  <StudentInitials student={student} />
                   <div>
                     <Link
                       to={`/students/${student.id}`}
                       className="text-sm font-medium text-ink-800 hover:text-ink-900"
                     >
-                      {student.name}
+                      {displayName(student)}
                     </Link>
                     <div className="mt-0.5 flex items-center gap-3 text-xs text-ink-400">
-                      <span>Age {student.age}</span>
+                      <span>{student.level}</span>
+                      {student.age != null && <span>Age {student.age}</span>}
                       <span>{student.gender}</span>
+                      {student.phone && <span>{student.phone}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Badge variant={groupLabel(student) === 'JDY' ? 'JDY' : 'BY'}>{groupLabel(student)}</Badge>
                   <Badge variant={student.active ? 'active' : 'archived'}>
                     {student.active ? 'Active' : 'Archived'}
                   </Badge>
@@ -178,7 +238,7 @@ export function StudentsPage() {
                     <Link
                       to={`/students/${student.id}`}
                       className="rounded-full p-1.5 text-ink-300 transition-colors hover:bg-ink-100 hover:text-ink-600"
-                      aria-label={`View ${student.name}`}
+                      aria-label={`View ${displayName(student)}`}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Link>
@@ -201,7 +261,17 @@ export function StudentsPage() {
       >
         {editingStudent && (
           <StudentForm
-            initial={{ ...editingStudent, description: editingStudent.description ?? '' }}
+            initial={{
+              english_name: editingStudent.english_name ?? '',
+              chinese_name: editingStudent.chinese_name ?? '',
+              group_name: editingStudent.group_name,
+              level: editingStudent.level,
+              age: editingStudent.age ?? '',
+              gender: editingStudent.gender,
+              birthday: editingStudent.birthday ?? '',
+              phone: editingStudent.phone ?? '',
+              description: editingStudent.description ?? '',
+            }}
             onSubmit={handleEdit}
             onCancel={() => setEditingStudent(null)}
             submitLabel="Update"

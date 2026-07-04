@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight } from 'lucide-react';
+import { format } from 'date-fns';
+import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight, TrendingUp } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
+import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
-import type { Student, WeeklyReport, NoShowStudent } from '../types';
+import type { Student, WeeklyReport, NoShowStudent, MonthlyTrend } from '../types';
 
 function ProgressBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
@@ -19,12 +22,20 @@ function ProgressBar({ label, value, total, color }: { label: string; value: num
   );
 }
 
-export function DashboardPage() {
-  const { data: students, loading: loadingStudents } = useApi<Student[]>('/api/students');
-  const { data: weeks, loading: loadingWeeks } = useApi<WeeklyReport[]>('/api/reports/weekly?limit=4');
-  const { data: noShows, loading: loadingNoShows } = useApi<NoShowStudent[]>('/api/no-shows');
+function monthLabel(month: string): string {
+  return format(new Date(`${month}-01T00:00:00Z`), 'MMM yyyy');
+}
 
-  if (loadingStudents || loadingWeeks || loadingNoShows) return <LoadingSpinner />;
+export function DashboardPage() {
+  const [group, setGroup] = useState<GroupToggleValue>('ALL');
+  const groupQs = group !== 'ALL' ? `group=${group}&` : '';
+
+  const { data: students, loading: loadingStudents } = useApi<Student[]>(`/api/students?${groupQs}`);
+  const { data: weeks, loading: loadingWeeks } = useApi<WeeklyReport[]>(`/api/reports/weekly?${groupQs}limit=4`);
+  const { data: noShows, loading: loadingNoShows } = useApi<NoShowStudent[]>(`/api/no-shows?${groupQs}`);
+  const { data: trend, loading: loadingTrend } = useApi<MonthlyTrend[]>(`/api/reports/monthly?${groupQs}months=6`);
+
+  if (loadingStudents || loadingWeeks || loadingNoShows || loadingTrend) return <LoadingSpinner />;
 
   const activeStudents = students?.length || 0;
   const latestWeek = weeks?.[0];
@@ -45,6 +56,9 @@ export function DashboardPage() {
           <p className="mt-2 text-base text-ink-400">
             Sunday attendance overview &mdash; everything at a glance.
           </p>
+          <div className="mt-4">
+            <GroupToggle value={group} onChange={setGroup} />
+          </div>
         </div>
         <div className="flex gap-3">
           <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
@@ -77,6 +91,30 @@ export function DashboardPage() {
             <ProgressBar label="Present" value={latestWeek.present} total={totalRecorded} color="bg-status-success" />
             <ProgressBar label="Late" value={latestWeek.late} total={totalRecorded} color="bg-accent-yellow" />
             <ProgressBar label="Absent" value={latestWeek.absent} total={totalRecorded} color="bg-status-danger/60" />
+          </div>
+        </div>
+      )}
+
+      {/* Monthly trend */}
+      {trend && trend.length > 0 && (
+        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+          <div className="mb-6 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-ink-400" />
+            <h2 className="text-sm font-semibold text-ink-700">Attendance Rate Trend</h2>
+          </div>
+          <div className="flex items-end justify-between gap-3 sm:gap-6">
+            {trend.map((m) => (
+              <div key={m.month} className="flex flex-1 flex-col items-center gap-2">
+                <span className="text-xs font-semibold text-ink-600">{m.attendance_rate}%</span>
+                <div className="flex h-28 w-full items-end overflow-hidden rounded-lg bg-ink-100">
+                  <div
+                    className="w-full rounded-lg bg-accent-charcoal transition-all"
+                    style={{ height: `${m.attendance_rate}%` }}
+                  />
+                </div>
+                <span className="text-xs text-ink-400">{monthLabel(m.month)}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

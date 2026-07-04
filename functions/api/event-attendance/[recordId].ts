@@ -14,11 +14,11 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   if (auth instanceof Response) return auth;
 
   const recordId = params.recordId as string;
-  const record = await env.DB.prepare('SELECT * FROM attendance_records WHERE id = ?')
+  const record = await env.DB.prepare('SELECT * FROM event_attendance_records WHERE id = ?')
     .bind(recordId)
-    .first<{ id: string; session_id: string }>();
+    .first<{ id: string; event_id: string }>();
 
-  if (!record) return notFound('Attendance record not found');
+  if (!record) return notFound('Event attendance record not found');
 
   const body = await request.json<{
     status?: string;
@@ -26,18 +26,18 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     notes?: string | null;
   }>();
 
-  const session = await env.DB.prepare('SELECT * FROM sessions WHERE id = ?')
-    .bind(record.session_id)
+  const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?')
+    .bind(record.event_id)
     .first<{ start_time: string; late_threshold_minutes: number }>();
 
-  if (!session) return notFound('Associated session not found');
+  if (!event) return notFound('Associated event not found');
 
   let status = body.status;
   if (body.check_in_timestamp && status !== 'absent' && status !== 'excused') {
     status = computeAttendanceStatus(
       body.check_in_timestamp,
-      session.start_time,
-      session.late_threshold_minutes,
+      event.start_time,
+      event.late_threshold_minutes,
     );
   }
 
@@ -48,7 +48,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   const checkIn = status === 'absent' || status === 'excused' ? null : (body.check_in_timestamp ?? null);
 
   await env.DB.prepare(
-    `UPDATE attendance_records
+    `UPDATE event_attendance_records
      SET status = COALESCE(?, status),
          check_in_timestamp = ?,
          notes = COALESCE(?, notes),
@@ -59,17 +59,17 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     .run();
 
   const updated = await env.DB.prepare(
-    `SELECT ar.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
-     FROM attendance_records ar
-     JOIN students s ON s.id = ar.student_id
-     WHERE ar.id = ?`,
+    `SELECT ear.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
+     FROM event_attendance_records ear
+     JOIN students s ON s.id = ear.student_id
+     WHERE ear.id = ?`,
   )
     .bind(recordId)
     .first();
 
   await logAudit(env.DB, {
     actorUserId: auth.id,
-    entityType: 'attendance_record',
+    entityType: 'event_attendance_record',
     entityId: recordId,
     action: 'update',
     metadata: { status },

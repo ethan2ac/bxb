@@ -5,6 +5,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { formatDate, formatTime } from '../utils/dates';
+import { displayName } from '../utils/students';
+import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import type { Student, AttendanceRecord, AttendanceSummary } from '../types';
 import { BarChart3 } from 'lucide-react';
 
@@ -13,6 +15,7 @@ const inputClass =
 
 export function StudentReportPage() {
   const { data: students, loading: loadingStudents } = useApi<Student[]>('/api/students?includeArchived=true');
+  const [group, setGroup] = useState<GroupToggleValue>('ALL');
   const [selectedId, setSelectedId] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -59,6 +62,15 @@ export function StudentReportPage() {
       <div>
         <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Reports</h1>
         <p className="mt-2 text-base text-ink-400">Individual student attendance analysis</p>
+        <div className="mt-4">
+          <GroupToggle
+            value={group}
+            onChange={(g) => {
+              setGroup(g);
+              setSelectedId('');
+            }}
+          />
+        </div>
       </div>
 
       {/* Filters */}
@@ -68,11 +80,13 @@ export function StudentReportPage() {
             <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">Student</label>
             <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className={inputClass}>
               <option value="">Select a student...</option>
-              {students?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} {!s.active ? '(Archived)' : ''}
-                </option>
-              ))}
+              {students
+                ?.filter((s) => group === 'ALL' || s.group_name === group)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {displayName(s)} {!s.active ? '(Archived)' : ''}
+                  </option>
+                ))}
             </select>
           </div>
           <div>
@@ -90,6 +104,7 @@ export function StudentReportPage() {
               <option value="present">Present</option>
               <option value="late">Late</option>
               <option value="absent">Absent</option>
+              <option value="excused">Excused</option>
             </select>
           </div>
         </div>
@@ -108,7 +123,7 @@ export function StudentReportPage() {
       {report && !loading && (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Attendance Rate</p>
               <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-success">{report.summary.attendance_rate}%</p>
@@ -120,6 +135,10 @@ export function StudentReportPage() {
             <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
               <p className="mt-2 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{report.summary.late}</p>
+            </div>
+            <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
+              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-info">{report.summary.excused}</p>
             </div>
             <div className="rounded-card bg-accent-charcoal p-6 shadow-dark-card">
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Absent</p>

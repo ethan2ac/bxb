@@ -9,7 +9,7 @@ interface Env {
   SESSION_SECRET?: string;
 }
 
-interface AttendanceEntry {
+interface EventAttendanceEntry {
   student_id: string;
   status: string;
   check_in_timestamp?: string | null;
@@ -21,20 +21,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (auth instanceof Response) return auth;
 
   const body = await request.json<{
-    session_id: string;
-    records: AttendanceEntry[];
+    event_id: string;
+    records: EventAttendanceEntry[];
   }>();
 
-  if (!body.session_id) return badRequest('session_id is required');
+  if (!body.event_id) return badRequest('event_id is required');
   if (!Array.isArray(body.records) || body.records.length === 0) {
     return badRequest('records array is required and must not be empty');
   }
 
-  const session = await env.DB.prepare('SELECT * FROM sessions WHERE id = ?')
-    .bind(body.session_id)
+  const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?')
+    .bind(body.event_id)
     .first<{ id: string; start_time: string; late_threshold_minutes: number }>();
 
-  if (!session) return badRequest('Session not found');
+  if (!event) return badRequest('Event not found');
 
   const timestamp = now();
   const statements: D1PreparedStatement[] = [];
@@ -51,8 +51,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (entry.check_in_timestamp && status !== 'absent' && status !== 'excused') {
       status = computeAttendanceStatus(
         entry.check_in_timestamp,
-        session.start_time,
-        session.late_threshold_minutes,
+        event.start_time,
+        event.late_threshold_minutes,
       );
     }
 
@@ -64,17 +64,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     statements.push(
       env.DB.prepare(
-        `INSERT INTO attendance_records (id, student_id, session_id, status, check_in_timestamp, notes, created_at, updated_at)
+        `INSERT INTO event_attendance_records (id, student_id, event_id, status, check_in_timestamp, notes, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(student_id, session_id) DO UPDATE SET
+         ON CONFLICT(student_id, event_id) DO UPDATE SET
            status = excluded.status,
            check_in_timestamp = excluded.check_in_timestamp,
            notes = excluded.notes,
            updated_at = excluded.updated_at`,
       ).bind(
-        generateId('att'),
+        generateId('eatt'),
         entry.student_id,
-        body.session_id,
+        body.event_id,
         status,
         checkIn,
         entry.notes || null,
@@ -88,22 +88,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     await env.DB.batch(statements);
     await logAudit(env.DB, {
       actorUserId: auth.id,
-      entityType: 'session',
-      entityId: body.session_id,
+      entityType: 'event',
+      entityId: body.event_id,
       action: 'attendance_save',
       metadata: { recordCount: statements.length },
     });
   }
 
   const records = await env.DB.prepare(
-    `SELECT ar.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
-     FROM attendance_records ar
-     JOIN students s ON s.id = ar.student_id
-     WHERE ar.session_id = ?
+    `SELECT ear.*, s.english_name || CASE WHEN s.chinese_name IS NOT NULL AND s.chinese_name != '' THEN '/' || s.chinese_name ELSE '' END as student_name
+     FROM event_attendance_records ear
+     JOIN students s ON s.id = ear.student_id
+     WHERE ear.event_id = ?
      ORDER BY s.english_name ASC`,
   )
-    .bind(body.session_id)
+    .bind(body.event_id)
     .all();
 
-  return success({ session, records: records.results });
+  return success({ event, records: records.results });
 };

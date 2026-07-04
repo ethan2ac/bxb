@@ -1,13 +1,29 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UserX, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
-import type { NoShowStudent } from '../types';
+import type { NoShowStudent, AppSettings } from '../types';
+
+function nameInitials(name: string): string {
+  return name
+    .split('/')[0]
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 export function NoShowsPage() {
-  const { data: noShows, loading } = useApi<NoShowStudent[]>('/api/no-shows');
+  const [group, setGroup] = useState<GroupToggleValue>('ALL');
+  const groupQs = group !== 'ALL' ? `?group=${group}` : '';
+  const { data: noShows, loading } = useApi<NoShowStudent[]>(`/api/no-shows${groupQs}`);
+  const { data: settings } = useApi<AppSettings>('/api/settings');
+  const threshold = settings ? parseInt(settings.no_show_threshold, 10) : 3;
 
   if (loading) return <LoadingSpinner />;
 
@@ -16,15 +32,18 @@ export function NoShowsPage() {
       <div>
         <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">No Shows</h1>
         <p className="mt-2 text-base text-ink-400">
-          Students with more than 3 consecutive absences
+          Students with more than {threshold} consecutive absences
         </p>
+        <div className="mt-4">
+          <GroupToggle value={group} onChange={setGroup} />
+        </div>
       </div>
 
       {!noShows || noShows.length === 0 ? (
         <EmptyState
           icon={<UserX className="h-10 w-10" />}
           title="No flagged students"
-          description="All active students have attended within the last 3 sessions"
+          description={`All active students have attended within the last ${threshold} sessions`}
         />
       ) : (
         <>
@@ -38,7 +57,7 @@ export function NoShowsPage() {
                 {noShows.length} student{noShows.length !== 1 ? 's' : ''} require attention
               </p>
               <p className="mt-0.5 text-xs text-ink-400">
-                These students have missed more than 3 consecutive Sunday sessions.
+                These students have missed more than {threshold} consecutive Sunday sessions.
               </p>
             </div>
           </div>
@@ -52,7 +71,7 @@ export function NoShowsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
                     <div className="flex h-11 w-11 items-center justify-center rounded-full bg-status-danger-soft text-sm font-bold text-status-danger">
-                      {student.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      {nameInitials(student.name)}
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-ink-800">{student.name}</h3>
