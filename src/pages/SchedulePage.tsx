@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, ArrowRight, Plus } from 'lucide-react';
+import { Trash2, ArrowRight, Plus, TrendingUp, ClipboardCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
@@ -82,34 +82,49 @@ export function SchedulePage() {
       >
         {modal.type === 'day' && (
           <div className="space-y-3">
-            {modal.events.map((event) => (
-              <div
-                key={event.id}
-                className="flex items-center justify-between rounded-card-sm border border-ink-100 bg-ink-50/50 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-ink-800">{event.name}</p>
-                  <Badge variant={SCOPE_BADGE(event.group_scope)}>
-                    {event.group_scope === 'BOTH' ? 'BY & JDY' : event.group_scope}
-                  </Badge>
+            {modal.events.map((event) => {
+              const isFuture = event.event_date > new Date().toISOString().split('T')[0];
+              return (
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between rounded-card-sm border border-ink-100 bg-ink-50/50 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-ink-800">{event.name}</p>
+                    <Badge variant={SCOPE_BADGE(event.group_scope)}>
+                      {event.group_scope === 'BOTH' ? 'BY & JDY' : event.group_scope}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setModal({ type: 'edit', event })}
+                      className="rounded-pill px-3 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                    >
+                      Edit
+                    </button>
+                    {isFuture ? (
+                      <button
+                        onClick={() => navigate(`/forecast/${event.id}`)}
+                        className="flex items-center gap-1 rounded-pill bg-accent-charcoal px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-dark"
+                      >
+                        <TrendingUp className="h-3 w-3" />
+                        Forecast
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => navigate(`/schedule/${event.id}`)}
+                        className="flex items-center gap-1 rounded-pill bg-accent-charcoal px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-dark"
+                      >
+                        <ClipboardCheck className="h-3 w-3" />
+                        Attendance
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setModal({ type: 'edit', event })}
-                    className="rounded-pill px-3 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => navigate(`/schedule/${event.id}`)}
-                    className="flex items-center gap-1 rounded-pill bg-accent-charcoal px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-dark"
-                  >
-                    Attendance
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             <button
               onClick={() => setModal({ type: 'create', date: modal.date })}
               className="flex w-full items-center justify-center gap-2 rounded-pill border border-dashed border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-50"

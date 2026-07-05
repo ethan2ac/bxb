@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { Save, Search, Check, X as XIcon } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
@@ -78,9 +79,10 @@ function ForecastRosterList({
 }
 
 export function ForecastPage() {
+  const { eventId: routeEventId } = useParams<{ eventId?: string }>();
   const { addToast } = useUiStore();
   const { data: events, loading: loadingEvents } = useApi<CalendarEvent[]>('/api/events?limit=100');
-  const [eventId, setEventId] = useState('');
+  const [eventId, setEventId] = useState(routeEventId || '');
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -91,6 +93,10 @@ export function ForecastPage() {
     .sort((a, b) => a.event_date.localeCompare(b.event_date));
 
   const selectedEvent = events?.find((e) => e.id === eventId) || null;
+  const dropdownEvents =
+    selectedEvent && !upcomingEvents.some((e) => e.id === selectedEvent.id)
+      ? [selectedEvent, ...upcomingEvents]
+      : upcomingEvents;
 
   const load = useCallback(async () => {
     if (!eventId || !selectedEvent) return;
@@ -123,8 +129,7 @@ export function ForecastPage() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, addToast]);
+  }, [eventId, selectedEvent, addToast]);
 
   useEffect(() => {
     load();
@@ -197,7 +202,7 @@ export function ForecastPage() {
           className="mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
         >
           <option value="">Select an upcoming event...</option>
-          {upcomingEvents.map((e) => (
+          {dropdownEvents.map((e) => (
             <option key={e.id} value={e.id}>
               {e.name} &mdash; {formatDate(e.event_date)}
             </option>

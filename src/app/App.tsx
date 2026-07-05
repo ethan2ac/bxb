@@ -54,6 +54,7 @@ export function App() {
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="schedule/:eventId" element={<EventAttendancePage />} />
           <Route path="forecast" element={<ForecastPage />} />
+          <Route path="forecast/:eventId" element={<ForecastPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
