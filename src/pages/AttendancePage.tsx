@@ -14,7 +14,6 @@ import type {
   AttendanceRecord,
   AttendanceEntry,
   AttendanceStatus,
-  AppSettings,
   CalendarEvent,
   GroupName,
 } from '../types';
@@ -60,22 +59,32 @@ export function AttendancePage() {
             : ['BY'];
       setActiveGroups(groups);
 
-      const [allStudents, settings] = await Promise.all([
-        api.get<Student[]>('/api/students'),
-        api.get<AppSettings>('/api/settings'),
-      ]);
+      // The day's earliest-starting event governs the session's start
+      // time/late threshold, so "Session Details" reflects what was
+      // actually entered when the event was created (not global defaults).
+      const primaryEvent = [...dayEvents].sort((a, b) => a.start_time.localeCompare(b.start_time))[0];
+
+      const allStudents = await api.get<Student[]>('/api/students');
       const students = allStudents.filter((s) => groups.includes(s.group_name));
 
       let currentSession: Session | null = null;
       let records: AttendanceRecord[] = [];
 
       try {
-        const result = await api.post<Session>('/api/sessions', {
+        currentSession = await api.post<Session>('/api/sessions', {
           session_date: sessionDate,
-          start_time: settings.default_start_time,
-          late_threshold_minutes: parseInt(settings.default_late_threshold_minutes, 10),
+          start_time: primaryEvent.start_time,
+          late_threshold_minutes: primaryEvent.late_threshold_minutes,
         });
-        currentSession = result;
+        if (
+          currentSession.start_time !== primaryEvent.start_time ||
+          currentSession.late_threshold_minutes !== primaryEvent.late_threshold_minutes
+        ) {
+          currentSession = await api.put<Session>(`/api/sessions/${currentSession.id}`, {
+            start_time: primaryEvent.start_time,
+            late_threshold_minutes: primaryEvent.late_threshold_minutes,
+          });
+        }
       } catch {
         currentSession = null;
       }
