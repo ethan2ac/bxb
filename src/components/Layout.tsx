@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   Users,
-  BarChart3,
   Calendar,
   CalendarPlus,
   TrendingUp,
@@ -23,7 +22,6 @@ const navItems = [
   { to: '/students', label: 'Students', icon: Users },
   { to: '/schedule', label: 'Schedule', icon: CalendarPlus },
   { to: '/forecast', label: 'Forecast', icon: TrendingUp },
-  { to: '/reports/student', label: 'Reports', icon: BarChart3 },
   { to: '/reports/weekly', label: 'Weekly', icon: Calendar },
   { to: '/no-shows', label: 'No Shows', icon: UserX },
 ];

@@ -8,7 +8,6 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { AttendancePage } from '../pages/AttendancePage';
 import { StudentsPage } from '../pages/StudentsPage';
 import { StudentDetailPage } from '../pages/StudentDetailPage';
-import { StudentReportPage } from '../pages/StudentReportPage';
 import { WeeklyReportPage } from '../pages/WeeklyReportPage';
 import { NoShowsPage } from '../pages/NoShowsPage';
 import { SchedulePage } from '../pages/SchedulePage';
@@ -48,7 +47,6 @@ export function App() {
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="students" element={<StudentsPage />} />
           <Route path="students/:studentId" element={<StudentDetailPage />} />
-          <Route path="reports/student" element={<StudentReportPage />} />
           <Route path="reports/weekly" element={<WeeklyReportPage />} />
           <Route path="no-shows" element={<NoShowsPage />} />
           <Route path="schedule" element={<SchedulePage />} />
