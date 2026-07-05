@@ -121,11 +121,16 @@ export function WeeklyReportPage() {
                       {details[week.session.id].map((r) => (
                         <div
                           key={r.id}
-                          className={`flex items-center justify-between rounded-card-sm px-4 py-2.5 text-sm ${
+                          className={`flex items-center justify-between gap-3 rounded-card-sm px-4 py-2.5 text-sm ${
                             r.status === 'late' ? 'bg-accent-yellow-soft' : 'bg-white'
                           }`}
                         >
-                          <span className="font-medium text-ink-700">{r.student_name}</span>
+                          <div className="min-w-0">
+                            <span className="font-medium text-ink-700">{r.student_name}</span>
+                            {r.notes && (
+                              <p className="mt-0.5 truncate text-xs text-ink-400">{r.notes}</p>
+                            )}
+                          </div>
                           <Badge variant={r.status}>{r.status}</Badge>
                         </div>
                       ))}

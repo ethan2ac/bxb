@@ -84,8 +84,10 @@ export function StudentsPage() {
     await refetch();
   };
 
+  const DELETE_CONFIRM_PHRASE = 'ICONFIRM';
+
   const handleDelete = async () => {
-    if (!deletingStudent || deleteConfirmText !== displayName(deletingStudent)) return;
+    if (!deletingStudent || deleteConfirmText !== DELETE_CONFIRM_PHRASE) return;
     setDeleting(true);
     try {
       await api.delete(`/api/students/${deletingStudent.id}`);
@@ -324,7 +326,7 @@ export function StudentsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">
-                Type <span className="font-semibold text-ink-600">{displayName(deletingStudent)}</span> to confirm
+                Type <span className="font-semibold text-ink-600">{DELETE_CONFIRM_PHRASE}</span> to confirm
               </label>
               <input
                 type="text"
@@ -343,7 +345,7 @@ export function StudentsPage() {
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleting || deleteConfirmText !== displayName(deletingStudent)}
+                disabled={deleting || deleteConfirmText !== DELETE_CONFIRM_PHRASE}
                 className="rounded-pill bg-status-danger px-5 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:opacity-90 disabled:opacity-40"
               >
                 {deleting ? 'Deleting...' : 'Permanently Delete'}
