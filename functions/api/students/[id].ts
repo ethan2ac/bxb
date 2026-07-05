@@ -66,3 +66,29 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   });
   return success(student);
 };
+
+export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+
+  const studentId = params.id as string;
+  const student = await env.DB.prepare('SELECT * FROM students WHERE id = ?').bind(studentId).first();
+  if (!student) return notFound('Student not found');
+  if (student.active) return badRequest('Archive the student before permanently removing them');
+
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM attendance_records WHERE student_id = ?').bind(studentId),
+    env.DB.prepare('DELETE FROM event_attendance_records WHERE student_id = ?').bind(studentId),
+    env.DB.prepare('DELETE FROM forecasts WHERE student_id = ?').bind(studentId),
+    env.DB.prepare('DELETE FROM students WHERE id = ?').bind(studentId),
+  ]);
+
+  await logAudit(env.DB, {
+    actorUserId: auth.id,
+    entityType: 'student',
+    entityId: studentId,
+    action: 'delete',
+    metadata: { english_name: student.english_name, chinese_name: student.chinese_name },
+  });
+  return success({ id: studentId });
+};

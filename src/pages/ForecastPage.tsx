@@ -261,6 +261,19 @@ export function ForecastPage() {
       {eventId && !loading && (
         <>
           <div className="flex flex-col gap-6 lg:flex-row">
+            {/* Filter panel — shown above the roster on mobile for easy access,
+                hidden here on desktop where it lives in the side column instead. */}
+            <div className="lg:hidden">
+              <FilterPanel
+                sortBy={sortBy}
+                onSortByChange={setSortBy}
+                levelSortLabel="Level"
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                statusOptions={STATUS_OPTIONS}
+              />
+            </div>
+
             <div className="flex-1 space-y-5">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
@@ -304,14 +317,16 @@ export function ForecastPage() {
             </div>
 
             <div className="w-full space-y-5 lg:w-72">
-              <FilterPanel
-                sortBy={sortBy}
-                onSortByChange={setSortBy}
-                levelSortLabel="Level"
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
-                statusOptions={STATUS_OPTIONS}
-              />
+              <div className="hidden lg:block">
+                <FilterPanel
+                  sortBy={sortBy}
+                  onSortByChange={setSortBy}
+                  levelSortLabel="Level"
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                  statusOptions={STATUS_OPTIONS}
+                />
+              </div>
               <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
                 <h3 className="text-sm font-semibold text-ink-700">Expected Headcount</h3>
                 <p className="mt-4 text-4xl font-bold tracking-tight-lg text-status-success">{expectedCount}</p>

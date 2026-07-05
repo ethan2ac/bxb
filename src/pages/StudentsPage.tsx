@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Archive, RotateCcw, ChevronRight } from 'lucide-react';
+import { Search, Plus, Archive, RotateCcw, ChevronRight, Trash2, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
@@ -31,6 +31,9 @@ export function StudentsPage() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const params = new URLSearchParams();
   if (showArchived) params.set('includeArchived', 'true');
@@ -43,7 +46,7 @@ export function StudentsPage() {
     const matchesSearch =
       (s.english_name || '').toLowerCase().includes(search.toLowerCase()) ||
       (s.chinese_name || '').includes(search);
-    if (showArchived) return matchesSearch;
+    if (showArchived) return matchesSearch && s.active === 0;
     return matchesSearch && s.active === 1;
   });
 
@@ -81,6 +84,22 @@ export function StudentsPage() {
     await refetch();
   };
 
+  const handleDelete = async () => {
+    if (!deletingStudent || deleteConfirmText !== displayName(deletingStudent)) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/students/${deletingStudent.id}`);
+      addToast(`${displayName(deletingStudent)} permanently deleted`, 'success');
+      setDeletingStudent(null);
+      setDeleteConfirmText('');
+      await refetch();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : 'Failed to delete', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -88,7 +107,9 @@ export function StudentsPage() {
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Students</h1>
-          <p className="mt-2 text-base text-ink-400">{filtered.length} enrolled students</p>
+          <p className="mt-2 text-base text-ink-400">
+            {showArchived ? `${filtered.length} archived students` : `${filtered.length} enrolled students`}
+          </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -227,13 +248,22 @@ export function StudentsPage() {
                         Archive
                       </button>
                     ) : (
-                      <button
-                        onClick={() => handleRestore(student)}
-                        className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-status-success transition-colors hover:bg-status-success-soft"
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Restore
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleRestore(student)}
+                          className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-status-success transition-colors hover:bg-status-success-soft"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => { setDeletingStudent(student); setDeleteConfirmText(''); }}
+                          className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-status-danger transition-colors hover:bg-status-danger-soft"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </button>
+                      </>
                     )}
                     <Link
                       to={`/students/${student.id}`}
@@ -275,6 +305,51 @@ export function StudentsPage() {
             onCancel={() => setEditingStudent(null)}
             submitLabel="Update"
           />
+        )}
+      </Modal>
+
+      <Modal
+        open={!!deletingStudent}
+        onClose={() => { setDeletingStudent(null); setDeleteConfirmText(''); }}
+        title="Permanently Delete Student"
+      >
+        {deletingStudent && (
+          <div className="space-y-5">
+            <div className="flex gap-3 rounded-card-sm border border-status-danger/30 bg-status-danger-soft p-4">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0 text-status-danger" />
+              <p className="text-sm text-ink-700">
+                This will permanently delete <span className="font-semibold">{displayName(deletingStudent)}</span>{' '}
+                and all of their attendance and forecast history. This action cannot be undone.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">
+                Type <span className="font-semibold text-ink-600">{displayName(deletingStudent)}</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setDeletingStudent(null); setDeleteConfirmText(''); }}
+                className="rounded-pill border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting || deleteConfirmText !== displayName(deletingStudent)}
+                className="rounded-pill bg-status-danger px-5 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:opacity-90 disabled:opacity-40"
+              >
+                {deleting ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>
