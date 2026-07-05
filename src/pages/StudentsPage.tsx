@@ -9,7 +9,7 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { StudentForm } from '../components/StudentForm';
-import { displayName, initials, groupLabel } from '../utils/students';
+import { displayName, initials, groupLabel, editableNameFields } from '../utils/students';
 import { BY_LEVELS, JDY_ROLES } from '../types';
 import type { Student, StudentFormData, GroupName } from '../types';
 
@@ -262,11 +262,10 @@ export function StudentsPage() {
         {editingStudent && (
           <StudentForm
             initial={{
-              english_name: editingStudent.english_name ?? '',
-              chinese_name: editingStudent.chinese_name ?? '',
+              ...editableNameFields(editingStudent),
               group_name: editingStudent.group_name,
               level: editingStudent.level,
-              age: editingStudent.age ?? '',
+              age: editingStudent.age || '',
               gender: editingStudent.gender,
               birthday: editingStudent.birthday ?? '',
               phone: editingStudent.phone ?? '',

@@ -19,6 +19,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const group = url.searchParams.get('group');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const date = url.searchParams.get('date');
 
   let query = 'SELECT * FROM events';
   const conditions: string[] = [];
@@ -26,6 +27,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (group) {
     conditions.push("(group_scope = ? OR group_scope = 'BOTH')");
     bindings.push(group);
+  }
+  if (date) {
+    conditions.push('event_date = ?');
+    bindings.push(date);
   }
   if (from) {
     conditions.push('event_date >= ?');

@@ -41,7 +41,7 @@ export function validateStudent(body: Record<string, unknown>): ValidationError[
   if (!isNonEmptyString(body.level)) {
     errors.push({ field: 'level', message: 'Level is required' });
   }
-  if (body.age !== undefined && body.age !== null && body.age !== '' && !isPositiveInteger(body.age)) {
+  if (body.age !== undefined && body.age !== null && body.age !== '' && body.age !== 0 && !isPositiveInteger(body.age)) {
     errors.push({ field: 'age', message: 'Age must be a positive integer' });
   }
   if (!isNonEmptyString(body.gender)) errors.push({ field: 'gender', message: 'Gender is required' });
@@ -64,8 +64,6 @@ export function validateSession(body: Record<string, unknown>): ValidationError[
     errors.push({ field: 'session_date', message: 'Session date is required' });
   } else if (!isValidDate(body.session_date as string)) {
     errors.push({ field: 'session_date', message: 'Invalid date format (YYYY-MM-DD)' });
-  } else if (!isSunday(body.session_date as string)) {
-    errors.push({ field: 'session_date', message: 'Sessions can only be created on Sundays' });
   }
   if (body.start_time !== undefined && !isNonEmptyString(body.start_time)) {
     errors.push({ field: 'start_time', message: 'Start time must be a valid time string' });
