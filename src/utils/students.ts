@@ -1,3 +1,4 @@
+import { BY_LEVELS, JDY_ROLES } from '../types';
 import type { Student } from '../types';
 
 export function displayName(student: Pick<Student, 'english_name' | 'chinese_name'>): string {
@@ -19,6 +20,15 @@ export function initials(student: Pick<Student, 'english_name' | 'chinese_name'>
 
 export function groupLabel(student: Pick<Student, 'group_name'>): string {
   return student.group_name === 'JDY' ? 'JDY' : 'BY';
+}
+
+// P4-S4 for BY, Coordinator/JDY Member/Mentor for JDY — sorted in the order
+// each group's real-world progression follows, not alphabetically (which
+// would wrongly put e.g. "Coordinator" before "JDY Member").
+export function levelSortIndex(student: Pick<Student, 'group_name' | 'level'>): number {
+  const order: readonly string[] = student.group_name === 'JDY' ? JDY_ROLES : BY_LEVELS;
+  const idx = order.indexOf(student.level);
+  return idx === -1 ? order.length : idx;
 }
 
 const CJK_REGEX = /[㐀-鿿]/;

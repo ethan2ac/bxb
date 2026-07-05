@@ -102,6 +102,6 @@ export function validateEvent(body: Record<string, unknown>): ValidationError[] 
   return errors;
 }
 
-export function validateForecast(expected: unknown): expected is 'yes' | 'no' {
-  return expected === 'yes' || expected === 'no';
+export function validateForecast(expected: unknown): expected is 'yes' | 'no' | 'excused' {
+  return expected === 'yes' || expected === 'no' || expected === 'excused';
 }

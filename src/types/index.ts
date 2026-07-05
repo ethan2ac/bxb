@@ -92,7 +92,7 @@ export interface EventAttendanceEntry {
   notes?: string | null;
 }
 
-export type ForecastExpectation = 'yes' | 'no';
+export type ForecastExpectation = 'yes' | 'no' | 'excused';
 
 export interface Forecast {
   id: string;

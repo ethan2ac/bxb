@@ -6,8 +6,9 @@ import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { RosterPanel } from '../components/RosterPanel';
 import { GroupSummaryTable } from '../components/GroupSummaryTable';
+import { FilterPanel, type SortBy } from '../components/FilterPanel';
 import { formatDate } from '../utils/dates';
-import { displayName } from '../utils/students';
+import { displayName, levelSortIndex } from '../utils/students';
 import type { Student, CalendarEvent, EventAttendanceRecord, EventAttendanceEntry, AttendanceStatus } from '../types';
 
 interface RosterEntry {
@@ -17,12 +18,22 @@ interface RosterEntry {
   notes: string;
 }
 
+const STATUS_OPTIONS: { value: AttendanceStatus | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'present', label: 'Present' },
+  { value: 'late', label: 'Late' },
+  { value: 'excused', label: 'Excused' },
+  { value: 'absent', label: 'Absent' },
+];
+
 export function EventAttendancePage() {
   const { eventId } = useParams<{ eventId: string }>();
   const { addToast } = useUiStore();
   const [event, setEvent] = useState<CalendarEvent | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('name');
+  const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -115,8 +126,23 @@ export function EventAttendancePage() {
     }
   };
 
-  const filteredRoster = roster.filter((entry) =>
-    displayName(entry.student).toLowerCase().includes(search.toLowerCase()),
+  const handleNotesChange = (studentId: string, value: string) => {
+    setRoster((prev) => prev.map((r) => (r.student.id === studentId ? { ...r, notes: value } : r)));
+  };
+
+  const sortRoster = (entries: RosterEntry[]) =>
+    [...entries].sort((a, b) =>
+      sortBy === 'level'
+        ? levelSortIndex(a.student) - levelSortIndex(b.student) || displayName(a.student).localeCompare(displayName(b.student))
+        : displayName(a.student).localeCompare(displayName(b.student)),
+    );
+
+  const filteredRoster = sortRoster(
+    roster.filter(
+      (entry) =>
+        displayName(entry.student).toLowerCase().includes(search.toLowerCase()) &&
+        (statusFilter === 'all' || entry.status === statusFilter),
+    ),
   );
   const isBoth = event?.group_scope === 'BOTH';
   const byRoster = filteredRoster.filter((e) => e.student.group_name === 'BY');
@@ -183,25 +209,36 @@ export function EventAttendancePage() {
                 title="BY"
                 rows={byRoster}
                 onCycle={cycleStatus}
-                emptyMessage={search ? 'No BY students match your search' : 'No BY students in this event'}
+                onNotesChange={handleNotesChange}
+                emptyMessage={search || statusFilter !== 'all' ? 'No BY students match' : 'No BY students in this event'}
               />
               <RosterPanel
                 title="JDY"
                 rows={jdyRoster}
                 onCycle={cycleStatus}
-                emptyMessage={search ? 'No JDY students match your search' : 'No JDY students in this event'}
+                onNotesChange={handleNotesChange}
+                emptyMessage={search || statusFilter !== 'all' ? 'No JDY students match' : 'No JDY students in this event'}
               />
             </div>
           ) : (
             <RosterPanel
               rows={filteredRoster}
               onCycle={cycleStatus}
-              emptyMessage={search ? 'No students match your search' : "No students in this event's group"}
+              onNotesChange={handleNotesChange}
+              emptyMessage={search || statusFilter !== 'all' ? 'No students match' : "No students in this event's group"}
             />
           )}
         </div>
 
         <div className="w-full space-y-5 lg:w-72">
+          <FilterPanel
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            levelSortLabel="Level"
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            statusOptions={STATUS_OPTIONS}
+          />
           <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
             <h3 className="text-sm font-semibold text-ink-700">Attendance Summary</h3>
             <div className="mt-4">
