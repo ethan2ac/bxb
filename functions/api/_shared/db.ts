@@ -79,7 +79,7 @@ export async function calculateNoShows(
   threshold: number = DEFAULT_NO_SHOW_THRESHOLD,
   groupName?: string,
 ): Promise<NoShowStudent[]> {
-  let studentQuery = 'SELECT id, english_name, chinese_name FROM students WHERE active = 1';
+  let studentQuery = 'SELECT id, english_name, chinese_name, group_name FROM students WHERE active = 1';
   const studentBindings: unknown[] = [];
   if (groupName) {
     studentQuery += ' AND group_name = ?';
@@ -88,13 +88,34 @@ export async function calculateNoShows(
   const students = await db
     .prepare(studentQuery)
     .bind(...studentBindings)
-    .all<{ id: string; english_name: string | null; chinese_name: string | null }>();
+    .all<{ id: string; english_name: string | null; chinese_name: string | null; group_name: string }>();
 
   const sessions = await db
     .prepare('SELECT id, session_date FROM sessions ORDER BY session_date DESC')
     .all<{ id: string; session_date: string }>();
 
   if (!students.results || !sessions.results || sessions.results.length === 0) return [];
+
+  // A session's date only "counts" against a student if that day's scheduled
+  // event(s) actually cover their group — otherwise a BY student with no
+  // record on a JDY-only day (or vice versa) would wrongly rack up an absence
+  // streak for an event they were never part of.
+  const eventRows = await db.prepare('SELECT event_date, group_scope FROM events').all<{
+    event_date: string;
+    group_scope: string;
+  }>();
+  const scopesByDate = new Map<string, Set<string>>();
+  for (const e of eventRows.results || []) {
+    if (!scopesByDate.has(e.event_date)) scopesByDate.set(e.event_date, new Set());
+    scopesByDate.get(e.event_date)!.add(e.group_scope);
+  }
+  const dateAppliesToGroup = (date: string, group: string): boolean => {
+    const scopes = scopesByDate.get(date);
+    // No event on record for this date: fall back to "applies" so legacy
+    // sessions predating the events calendar keep their prior behavior.
+    if (!scopes || scopes.size === 0) return true;
+    return scopes.has('BOTH') || scopes.has(group);
+  };
 
   const noShows: NoShowStudent[] = [];
 
@@ -121,6 +142,7 @@ export async function calculateNoShows(
     let lastAttended: string | null = null;
 
     for (const session of sessions.results) {
+      if (!dateAppliesToGroup(session.session_date, student.group_name)) continue;
       const status = recordMap.get(session.session_date);
       if (status === 'present' || status === 'late') {
         if (!lastAttended) lastAttended = session.session_date;
