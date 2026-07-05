@@ -53,7 +53,7 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           {error}
         </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="group_name" className="block text-sm font-medium text-ink-600">
             Group
@@ -89,7 +89,7 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="english_name" className="block text-sm font-medium text-ink-600">
             English Name {form.group_name === 'JDY' && <span className="font-normal text-ink-300">(optional)</span>}
@@ -117,7 +117,7 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {form.group_name === 'BY' && (
           <div>
             <label htmlFor="age" className="block text-sm font-medium text-ink-600">
@@ -151,7 +151,7 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="birthday" className="block text-sm font-medium text-ink-600">
             Birthday <span className="font-normal text-ink-300">(optional)</span>

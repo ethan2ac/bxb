@@ -44,7 +44,7 @@ export function WeeklyReportPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Weekly</h1>
+          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">History</h1>
           <p className="mt-2 text-base text-ink-400">Session-by-session breakdown</p>
           <div className="mt-4">
             <GroupToggle value={group} onChange={setGroup} />
@@ -58,7 +58,7 @@ export function WeeklyReportPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Weekly</h1>
+        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">History</h1>
         <p className="mt-2 text-base text-ink-400">Session-by-session breakdown</p>
         <div className="mt-4">
           <GroupToggle value={group} onChange={setGroup} />
@@ -113,7 +113,7 @@ export function WeeklyReportPage() {
                 </div>
               </div>
               {expandedId === week.session.id && (
-                <div className="border-t border-ink-100 bg-ink-50/50 px-12 py-5">
+                <div className="border-t border-ink-100 bg-ink-50/50 px-5 py-5 sm:px-12">
                   {loadingDetails === week.session.id ? (
                     <LoadingSpinner className="py-4" />
                   ) : details[week.session.id]?.length ? (

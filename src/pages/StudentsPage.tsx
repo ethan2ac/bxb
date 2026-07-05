@@ -187,18 +187,18 @@ export function StudentsPage() {
             {filtered.map((student) => (
               <div
                 key={student.id}
-                className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-ink-50/50"
+                className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-ink-50/50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
               >
                 <div className="flex items-center gap-4">
                   <StudentInitials student={student} />
-                  <div>
+                  <div className="min-w-0">
                     <Link
                       to={`/students/${student.id}`}
                       className="text-sm font-medium text-ink-800 hover:text-ink-900"
                     >
                       {displayName(student)}
                     </Link>
-                    <div className="mt-0.5 flex items-center gap-3 text-xs text-ink-400">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-400">
                       <span>{student.level}</span>
                       {!!student.age && <span>Age {student.age}</span>}
                       <span>{student.gender}</span>
@@ -206,7 +206,7 @@ export function StudentsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 pl-14 sm:gap-3 sm:pl-0">
                   <Badge variant={groupLabel(student) === 'JDY' ? 'JDY' : 'BY'}>{groupLabel(student)}</Badge>
                   <Badge variant={student.active ? 'active' : 'archived'}>
                     {student.active ? 'Active' : 'Archived'}

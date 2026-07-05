@@ -80,20 +80,20 @@ export function StudentDetailPage() {
       </Link>
 
       {/* Profile hero */}
-      <div className="flex flex-col gap-6 rounded-card border border-ink-100 bg-white p-8 shadow-card md:flex-row md:items-start md:justify-between">
-        <div className="flex items-center gap-5">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink-100 text-xl font-bold text-ink-500">
+      <div className="flex flex-col gap-6 rounded-card border border-ink-100 bg-white p-5 shadow-card sm:p-8 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
+          <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-ink-100 text-lg font-bold text-ink-500 sm:h-16 sm:w-16 sm:text-xl">
             {initials(student)}
           </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight-lg text-ink-900">{displayName(student)}</h1>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight-lg text-ink-900 sm:text-2xl">{displayName(student)}</h1>
               <Badge variant={groupLabel(student) === 'JDY' ? 'JDY' : 'BY'}>{groupLabel(student)}</Badge>
               <Badge variant={student.active ? 'active' : 'archived'}>
                 {student.active ? 'Active' : 'Archived'}
               </Badge>
             </div>
-            <div className="mt-1.5 flex flex-wrap gap-4 text-sm text-ink-400">
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-400">
               <span>{student.level}</span>
               {!!student.age && <span>Age {student.age}</span>}
               <span>{student.gender}</span>
@@ -105,8 +105,8 @@ export function StudentDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <div>
             <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Last attended</p>
             <p className="mt-0.5 text-sm font-semibold text-ink-700">
               {lastAttended?.session_date ? formatDate(lastAttended.session_date) : 'Never'}
@@ -128,47 +128,47 @@ export function StudentDetailPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Attendance Rate</p>
-              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-success">{pctRate}%</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-status-success">{pctRate}%</p>
             </div>
             <UserCheck className="h-5 w-5 text-ink-300" />
           </div>
         </div>
-        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Present</p>
-              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-ink-900">{summary.present}</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-ink-900">{summary.present}</p>
             </div>
             <Calendar className="h-5 w-5 text-ink-300" />
           </div>
         </div>
-        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
-              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{summary.late}</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-accent-yellow-text">{summary.late}</p>
             </div>
             <Clock className="h-5 w-5 text-ink-300" />
           </div>
         </div>
-        <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+        <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
-              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-status-info">{summary.excused}</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-status-info">{summary.excused}</p>
             </div>
             <CalendarClock className="h-5 w-5 text-ink-300" />
           </div>
         </div>
-        <div className="rounded-card bg-accent-charcoal p-6 shadow-dark-card">
+        <div className="rounded-card bg-accent-charcoal p-4 shadow-dark-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Absent</p>
-              <p className="mt-2 text-3xl font-bold tracking-tight-lg text-white">{summary.absent}</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-white">{summary.absent}</p>
             </div>
             <UserX className="h-5 w-5 text-ink-500" />
           </div>
@@ -178,7 +178,7 @@ export function StudentDetailPage() {
       {/* Attendance history (behind the History button) */}
       {historyOpen && (
         <div className="space-y-5">
-          <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
             <h3 className="text-sm font-semibold text-ink-700">Filter History</h3>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>

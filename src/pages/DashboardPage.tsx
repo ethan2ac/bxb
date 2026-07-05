@@ -63,22 +63,22 @@ export function DashboardPage() {
             <GroupToggle value={group} onChange={setGroup} />
           </div>
         </div>
-        <div className="flex gap-3">
-          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
             <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Students</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-ink-900">{activeStudents}</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{activeStudents}</p>
           </div>
-          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
             <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{lateCount}</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-accent-yellow-text sm:text-3xl">{lateCount}</p>
           </div>
-          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
             <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-status-info">{excusedCount}</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-status-info sm:text-3xl">{excusedCount}</p>
           </div>
-          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
             <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Rate</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-status-success">{attendanceRate}%</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-status-success sm:text-3xl">{attendanceRate}%</p>
           </div>
         </div>
       </div>

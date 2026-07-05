@@ -23,7 +23,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-ink-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 mx-4 w-full max-w-lg rounded-card bg-white p-8 shadow-shell">
+      <div className="relative z-10 mx-4 max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-card bg-white p-5 shadow-shell sm:p-8">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight-lg text-ink-900">{title}</h2>
           <button

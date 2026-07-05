@@ -90,7 +90,7 @@ export function SettingsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-          <div className="rounded-card border border-ink-100 bg-white p-8 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card sm:p-8">
             <h2 className="text-base font-semibold text-ink-800">Class Configuration</h2>
             <div className="mt-6 space-y-5">
               <div>
@@ -166,7 +166,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-card border border-ink-100 bg-white p-8 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card sm:p-8">
             <h2 className="text-base font-semibold text-ink-800">Team</h2>
             <p className="mt-1 text-xs text-ink-400">
               Add a teammate their own login so multiple people can update attendance at once.
@@ -220,7 +220,7 @@ export function SettingsPage() {
             </form>
           </div>
 
-          <div className="rounded-card border border-ink-100 bg-white p-8 shadow-card">
+          <div className="rounded-card border border-ink-100 bg-white p-5 shadow-card sm:p-8">
             <h2 className="text-base font-semibold text-ink-800">About</h2>
             <div className="mt-4 space-y-2.5 text-sm">
               <div className="flex justify-between">
@@ -241,7 +241,7 @@ export function SettingsPage() {
 
         {/* Activity log */}
         <div className="rounded-card border border-ink-100 bg-white shadow-card">
-          <div className="border-b border-ink-100 px-7 py-5">
+          <div className="border-b border-ink-100 px-5 py-5 sm:px-7">
             <h2 className="text-base font-semibold text-ink-800">Recent Activity</h2>
           </div>
           {loadingLogs ? (
@@ -251,7 +251,7 @@ export function SettingsPage() {
           ) : (
             <div className="max-h-[560px] divide-y divide-ink-100 overflow-y-auto">
               {logs.map((log) => (
-                <div key={log.id} className="px-7 py-3.5 text-sm">
+                <div key={log.id} className="px-5 py-3.5 text-sm sm:px-7">
                   <p className="text-ink-700">
                     <span className="font-medium">{log.actor_name || 'System'}</span>{' '}
                     {ACTION_LABELS[log.action] || log.action}{' '}

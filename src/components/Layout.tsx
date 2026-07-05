@@ -3,7 +3,7 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   Users,
-  Calendar,
+  History,
   CalendarPlus,
   TrendingUp,
   UserX,
@@ -18,11 +18,11 @@ import { useAuthStore } from '../store/auth';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/attendance', label: 'Attendance', icon: ClipboardCheck },
-  { to: '/students', label: 'Students', icon: Users },
   { to: '/schedule', label: 'Schedule', icon: CalendarPlus },
   { to: '/forecast', label: 'Forecast', icon: TrendingUp },
-  { to: '/reports/weekly', label: 'Weekly', icon: Calendar },
+  { to: '/attendance', label: 'Attendance', icon: ClipboardCheck },
+  { to: '/students', label: 'Students', icon: Users },
+  { to: '/reports/weekly', label: 'History', icon: History },
   { to: '/no-shows', label: 'No Shows', icon: UserX },
 ];
 
@@ -47,8 +47,11 @@ export function Layout() {
             <span className="text-base font-semibold text-ink-800">PYB</span>
           </div>
 
-          {/* Desktop nav */}
-          <nav className="hidden items-center gap-1 rounded-pill bg-ink-100/60 p-1.5 md:flex">
+          {/* Desktop nav — only from xl: up (1280px). 7 items + brand + right actions need
+              ~1030px; at md (768px) and even lg (1024px) they overflowed and got clipped
+              entirely behind the shell's overflow-hidden. Anything narrower uses the
+              hamburger menu instead. */}
+          <nav className="hidden items-center gap-1 rounded-pill bg-ink-100/60 p-1.5 xl:flex">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -73,7 +76,7 @@ export function Layout() {
             <NavLink
               to="/settings"
               className={({ isActive }) =>
-                `hidden h-9 w-9 items-center justify-center rounded-full transition-colors md:flex ${
+                `hidden h-9 w-9 items-center justify-center rounded-full transition-colors xl:flex ${
                   isActive ? 'bg-ink-200 text-ink-700' : 'text-ink-400 hover:bg-ink-100 hover:text-ink-600'
                 }`
               }
@@ -81,11 +84,11 @@ export function Layout() {
             >
               <Settings className="h-4 w-4" />
             </NavLink>
-            <div className="hidden h-5 w-px bg-ink-200 md:block" />
-            <span className="hidden text-sm text-ink-400 md:block">{user?.name}</span>
+            <div className="hidden h-5 w-px bg-ink-200 xl:block" />
+            <span className="hidden text-sm text-ink-400 xl:block">{user?.name}</span>
             <button
               onClick={logout}
-              className="hidden h-9 w-9 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600 md:flex"
+              className="hidden h-9 w-9 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600 xl:flex"
               aria-label="Logout"
             >
               <LogOut className="h-4 w-4" />
@@ -94,7 +97,7 @@ export function Layout() {
             {/* Mobile menu */}
             <button
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-ink-500 hover:bg-ink-100 md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-ink-500 hover:bg-ink-100 xl:hidden"
               aria-label="Menu"
             >
               {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -104,7 +107,7 @@ export function Layout() {
 
         {/* Mobile nav dropdown */}
         {mobileNavOpen && (
-          <div className="relative z-20 border-b border-ink-100 bg-shell-surface px-6 pb-4 md:hidden">
+          <div className="relative z-20 border-b border-ink-100 bg-shell-surface px-6 pb-4 xl:hidden">
             <nav className="flex flex-col gap-1">
               {[...navItems, { to: '/settings', label: 'Settings', icon: Settings }].map((item) => (
                 <NavLink

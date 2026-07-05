@@ -77,7 +77,7 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
           placeholder="e.g. Games (Outdoor)"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="event_date" className="block text-sm font-medium text-ink-600">
             Date
@@ -108,7 +108,7 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="start_time" className="block text-sm font-medium text-ink-600">
             Start Time
