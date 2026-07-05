@@ -5,6 +5,7 @@ import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { GroupSummaryTable } from '../components/GroupSummaryTable';
 import { formatDate } from '../utils/dates';
 import { displayName } from '../utils/students';
 import type { Student, CalendarEvent, Forecast, ForecastEntry, ForecastExpectation } from '../types';
@@ -13,6 +14,67 @@ interface RosterEntry {
   student: Student;
   expected: ForecastExpectation;
   notes: string;
+}
+
+function ForecastRosterList({
+  title,
+  rows,
+  onToggle,
+  onNotesChange,
+  emptyMessage = 'No students match',
+}: {
+  title?: string;
+  rows: RosterEntry[];
+  onToggle: (studentId: string) => void;
+  onNotesChange: (studentId: string, value: string) => void;
+  emptyMessage?: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1 space-y-3">
+      {title && (
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-sm font-semibold text-ink-700">{title}</h3>
+          <span className="text-xs text-ink-400">{rows.length} students</span>
+        </div>
+      )}
+      <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
+        {rows.length === 0 ? (
+          <div className="p-8 text-center text-sm text-ink-400">{emptyMessage}</div>
+        ) : (
+          <div className="divide-y divide-ink-100">
+            {rows.map((entry) => (
+              <div
+                key={entry.student.id}
+                className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-ink-50/50"
+              >
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => onToggle(entry.student.id)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
+                      entry.expected === 'yes'
+                        ? 'bg-status-success text-white shadow-sm'
+                        : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
+                    }`}
+                    aria-label={`Toggle forecast for ${displayName(entry.student)}`}
+                  >
+                    {entry.expected === 'yes' ? <Check className="h-5 w-5" /> : <XIcon className="h-4 w-4" />}
+                  </button>
+                  <p className="text-sm font-medium text-ink-800">{displayName(entry.student)}</p>
+                </div>
+                <input
+                  type="text"
+                  value={entry.notes}
+                  onChange={(e) => onNotesChange(entry.student.id, e.target.value)}
+                  placeholder="Note (optional)"
+                  className="w-40 rounded-card-sm border border-ink-200 bg-ink-50/50 px-3 py-1.5 text-xs text-ink-700 placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function ForecastPage() {
@@ -97,9 +159,25 @@ export function ForecastPage() {
     }
   };
 
+  const handleNotesChange = (studentId: string, value: string) => {
+    setRoster((prev) => prev.map((r) => (r.student.id === studentId ? { ...r, notes: value } : r)));
+  };
+
   const filteredRoster = roster.filter((entry) =>
     displayName(entry.student).toLowerCase().includes(search.toLowerCase()),
   );
+  const isBoth = selectedEvent?.group_scope === 'BOTH';
+  const byRoster = filteredRoster.filter((e) => e.student.group_name === 'BY');
+  const jdyRoster = filteredRoster.filter((e) => e.student.group_name === 'JDY');
+
+  const groupExpectedStats = (entries: RosterEntry[]) => ({
+    expected: entries.filter((e) => e.expected === 'yes').length,
+    total: entries.length,
+  });
+  const byStats = groupExpectedStats(roster.filter((e) => e.student.group_name === 'BY'));
+  const jdyStats = groupExpectedStats(roster.filter((e) => e.student.group_name === 'JDY'));
+  const groupLabels = isBoth ? ['BY', 'JDY'] : [selectedEvent?.group_scope === 'JDY' ? 'JDY' : 'BY'];
+  const summaryStats = isBoth ? [byStats, jdyStats] : selectedEvent?.group_scope === 'JDY' ? [jdyStats] : [byStats];
   const expectedCount = roster.filter((e) => e.expected === 'yes').length;
 
   if (loadingEvents) return <LoadingSpinner />;
@@ -151,48 +229,30 @@ export function ForecastPage() {
                 />
               </div>
 
-              <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
-                {filteredRoster.length === 0 ? (
-                  <div className="p-12 text-center text-sm text-ink-400">No students match</div>
-                ) : (
-                  <div className="divide-y divide-ink-100">
-                    {filteredRoster.map((entry) => (
-                      <div
-                        key={entry.student.id}
-                        className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-ink-50/50"
-                      >
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={() => toggleExpected(entry.student.id)}
-                            className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
-                              entry.expected === 'yes'
-                                ? 'bg-status-success text-white shadow-sm'
-                                : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
-                            }`}
-                            aria-label={`Toggle forecast for ${displayName(entry.student)}`}
-                          >
-                            {entry.expected === 'yes' ? <Check className="h-5 w-5" /> : <XIcon className="h-4 w-4" />}
-                          </button>
-                          <p className="text-sm font-medium text-ink-800">{displayName(entry.student)}</p>
-                        </div>
-                        <input
-                          type="text"
-                          value={entry.notes}
-                          onChange={(e) =>
-                            setRoster((prev) =>
-                              prev.map((r) =>
-                                r.student.id === entry.student.id ? { ...r, notes: e.target.value } : r,
-                              ),
-                            )
-                          }
-                          placeholder="Note (optional)"
-                          className="w-40 rounded-card-sm border border-ink-200 bg-ink-50/50 px-3 py-1.5 text-xs text-ink-700 placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {isBoth ? (
+                <div className="flex flex-col gap-5 md:flex-row">
+                  <ForecastRosterList
+                    title="BY"
+                    rows={byRoster}
+                    onToggle={toggleExpected}
+                    onNotesChange={handleNotesChange}
+                    emptyMessage={search ? 'No BY students match your search' : 'No BY students enrolled'}
+                  />
+                  <ForecastRosterList
+                    title="JDY"
+                    rows={jdyRoster}
+                    onToggle={toggleExpected}
+                    onNotesChange={handleNotesChange}
+                    emptyMessage={search ? 'No JDY students match your search' : 'No JDY students enrolled'}
+                  />
+                </div>
+              ) : (
+                <ForecastRosterList
+                  rows={filteredRoster}
+                  onToggle={toggleExpected}
+                  onNotesChange={handleNotesChange}
+                />
+              )}
             </div>
 
             <div className="w-full space-y-5 lg:w-72">
@@ -200,6 +260,21 @@ export function ForecastPage() {
                 <h3 className="text-sm font-semibold text-ink-700">Expected Headcount</h3>
                 <p className="mt-4 text-4xl font-bold tracking-tight-lg text-status-success">{expectedCount}</p>
                 <p className="mt-1 text-xs text-ink-400">of {roster.length} enrolled</p>
+                <div className="mt-5 border-t border-ink-100 pt-5">
+                  <GroupSummaryTable
+                    groupLabels={groupLabels}
+                    rows={[
+                      {
+                        key: 'expected',
+                        label: 'Expected',
+                        dotClassName: 'bg-status-success',
+                        emphasize: true,
+                        values: summaryStats.map((s) => s.expected),
+                      },
+                      { key: 'enrolled', label: 'Enrolled', values: summaryStats.map((s) => s.total) },
+                    ]}
+                  />
+                </div>
               </div>
               <button
                 onClick={saveForecast}

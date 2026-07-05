@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Search, Save, Check, X as XIcon, Clock, CalendarOff } from 'lucide-react';
+import { ArrowLeft, Search, Save } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Badge } from '../components/Badge';
-import { formatDate, formatTime } from '../utils/dates';
+import { RosterPanel } from '../components/RosterPanel';
+import { GroupSummaryTable } from '../components/GroupSummaryTable';
+import { formatDate } from '../utils/dates';
 import { displayName } from '../utils/students';
 import type { Student, CalendarEvent, EventAttendanceRecord, EventAttendanceEntry, AttendanceStatus } from '../types';
 
@@ -117,6 +118,21 @@ export function EventAttendancePage() {
   const filteredRoster = roster.filter((entry) =>
     displayName(entry.student).toLowerCase().includes(search.toLowerCase()),
   );
+  const isBoth = event?.group_scope === 'BOTH';
+  const byRoster = filteredRoster.filter((e) => e.student.group_name === 'BY');
+  const jdyRoster = filteredRoster.filter((e) => e.student.group_name === 'JDY');
+
+  const groupStats = (entries: RosterEntry[]) => {
+    const late = entries.filter((e) => e.status === 'late').length;
+    const attended = entries.filter((e) => e.status === 'present' || e.status === 'late').length;
+    const excused = entries.filter((e) => e.status === 'excused').length;
+    const absent = entries.filter((e) => e.status === 'absent').length;
+    return { present: attended - late, late, excused, absent, total: entries.length };
+  };
+  const byStats = groupStats(roster.filter((e) => e.student.group_name === 'BY'));
+  const jdyStats = groupStats(roster.filter((e) => e.student.group_name === 'JDY'));
+  const groupLabels = isBoth ? ['BY', 'JDY'] : [event?.group_scope === 'JDY' ? 'JDY' : 'BY'];
+  const summaryStats = isBoth ? [byStats, jdyStats] : event?.group_scope === 'JDY' ? [jdyStats] : [byStats];
 
   if (loading || !event) return <LoadingSpinner />;
 
@@ -145,80 +161,97 @@ export function EventAttendancePage() {
         </button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
-        <input
-          type="text"
-          placeholder="Search students..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
-        />
-      </div>
-      <p className="text-xs text-ink-400">
-        Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent.
-      </p>
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="flex-1 space-y-5">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
+            <input
+              type="text"
+              placeholder="Search students..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+            />
+          </div>
+          <p className="text-xs text-ink-400">
+            Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent.
+          </p>
 
-      <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
-        {filteredRoster.length === 0 ? (
-          <div className="p-12 text-center text-sm text-ink-400">
-            {search ? 'No students match your search' : 'No students in this event\'s group'}
+          {isBoth ? (
+            <div className="flex flex-col gap-5 md:flex-row">
+              <RosterPanel
+                title="BY"
+                rows={byRoster}
+                onCycle={cycleStatus}
+                emptyMessage={search ? 'No BY students match your search' : 'No BY students in this event'}
+              />
+              <RosterPanel
+                title="JDY"
+                rows={jdyRoster}
+                onCycle={cycleStatus}
+                emptyMessage={search ? 'No JDY students match your search' : 'No JDY students in this event'}
+              />
+            </div>
+          ) : (
+            <RosterPanel
+              rows={filteredRoster}
+              onCycle={cycleStatus}
+              emptyMessage={search ? 'No students match your search' : "No students in this event's group"}
+            />
+          )}
+        </div>
+
+        <div className="w-full space-y-5 lg:w-72">
+          <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+            <h3 className="text-sm font-semibold text-ink-700">Attendance Summary</h3>
+            <div className="mt-4">
+              <GroupSummaryTable
+                groupLabels={groupLabels}
+                rows={[
+                  { key: 'enrolled', label: 'Enrolled', values: summaryStats.map((s) => s.total) },
+                  {
+                    key: 'present',
+                    label: 'Present',
+                    dotClassName: 'bg-status-success',
+                    values: summaryStats.map((s) => s.present),
+                  },
+                  {
+                    key: 'late',
+                    label: 'Late',
+                    dotClassName: 'bg-accent-yellow',
+                    values: summaryStats.map((s) => s.late),
+                  },
+                  {
+                    key: 'excused',
+                    label: 'Excused',
+                    dotClassName: 'bg-status-info',
+                    values: summaryStats.map((s) => s.excused),
+                  },
+                  {
+                    key: 'absent',
+                    label: 'Absent',
+                    dotClassName: 'bg-status-danger/60',
+                    values: summaryStats.map((s) => s.absent),
+                  },
+                ]}
+              />
+            </div>
           </div>
-        ) : (
-          <div className="divide-y divide-ink-100">
-            {filteredRoster.map((entry) => (
-              <div
-                key={entry.student.id}
-                className={`flex items-center justify-between px-6 py-4 transition-colors ${
-                  entry.status === 'late' ? 'bg-accent-yellow-soft' : 'hover:bg-ink-50/50'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => cycleStatus(entry.student.id)}
-                    className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
-                      entry.status === 'present'
-                        ? 'bg-status-success text-white shadow-sm'
-                        : entry.status === 'late'
-                          ? 'bg-accent-yellow text-white shadow-sm'
-                          : entry.status === 'excused'
-                            ? 'bg-status-info text-white shadow-sm'
-                            : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
-                    }`}
-                    aria-label={`Toggle attendance for ${displayName(entry.student)}`}
-                  >
-                    {entry.status === 'excused' ? (
-                      <CalendarOff className="h-4 w-4" />
-                    ) : entry.status !== 'absent' ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <XIcon className="h-4 w-4" />
-                    )}
-                  </button>
-                  <div>
-                    <p className={`text-sm font-medium ${entry.status === 'late' ? 'text-accent-yellow-text' : 'text-ink-800'}`}>
-                      {displayName(entry.student)}
-                    </p>
-                    {entry.check_in_timestamp && (
-                      <p className="text-xs text-ink-400">Checked in {formatTime(entry.check_in_timestamp)}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {entry.status === 'late' && (
-                    <Badge variant="late">
-                      <Clock className="mr-0.5 h-3 w-3" />
-                      Late
-                    </Badge>
-                  )}
-                  {entry.status === 'present' && <Badge variant="present">Present</Badge>}
-                  {entry.status === 'absent' && <Badge variant="absent">Absent</Badge>}
-                  {entry.status === 'excused' && <Badge variant="excused">Excused</Badge>}
-                </div>
+
+          <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+            <h3 className="text-sm font-semibold text-ink-700">Event Details</h3>
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-ink-400">Start time</span>
+                <span className="font-medium text-ink-700">{event.start_time}</span>
               </div>
-            ))}
+              <div className="flex justify-between">
+                <span className="text-ink-400">Late after</span>
+                <span className="font-medium text-ink-700">{event.late_threshold_minutes} min</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
