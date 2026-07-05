@@ -11,8 +11,10 @@ import {
   LogOut,
   Menu,
   X,
+  ShieldCheck,
+  ChevronDown,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ToastContainer } from './Toast';
 import { useAuthStore } from '../store/auth';
 
@@ -29,6 +31,20 @@ const navItems = [
 export function Layout() {
   const { user, logout } = useAuthStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const adminMenuRef = useRef<HTMLDivElement>(null);
+  const isOwner = user?.role === 'owner';
+
+  useEffect(() => {
+    if (!adminMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (adminMenuRef.current && !adminMenuRef.current.contains(e.target as Node)) {
+        setAdminMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [adminMenuOpen]);
 
   return (
     <div className="min-h-screen bg-shell-bg p-3 md:p-6 lg:p-8">
@@ -73,6 +89,36 @@ export function Layout() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            {isOwner && (
+              <div className="relative hidden xl:block" ref={adminMenuRef}>
+                <button
+                  onClick={() => setAdminMenuOpen((open) => !open)}
+                  className={`flex items-center gap-1 rounded-pill px-3 py-2 text-[13px] font-medium transition-colors ${
+                    adminMenuOpen ? 'bg-ink-200 text-ink-700' : 'text-ink-500 hover:bg-ink-100 hover:text-ink-700'
+                  }`}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Admin
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                {adminMenuOpen && (
+                  <div className="absolute right-0 top-full z-30 mt-2 w-48 rounded-card-sm border border-ink-100 bg-white p-1.5 shadow-shell">
+                    <NavLink
+                      to="/admin/users"
+                      onClick={() => setAdminMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 rounded-card-sm px-3 py-2 text-sm font-medium transition-colors ${
+                          isActive ? 'bg-accent-charcoal text-white' : 'text-ink-600 hover:bg-ink-100'
+                        }`
+                      }
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Manage Users
+                    </NavLink>
+                  </div>
+                )}
+              </div>
+            )}
             <NavLink
               to="/settings"
               className={({ isActive }) =>
@@ -109,7 +155,11 @@ export function Layout() {
         {mobileNavOpen && (
           <div className="relative z-20 border-b border-ink-100 bg-shell-surface px-6 pb-4 xl:hidden">
             <nav className="flex flex-col gap-1">
-              {[...navItems, { to: '/settings', label: 'Settings', icon: Settings }].map((item) => (
+              {[
+                ...navItems,
+                ...(isOwner ? [{ to: '/admin/users', label: 'Manage Users', icon: ShieldCheck }] : []),
+                { to: '/settings', label: 'Settings', icon: Settings },
+              ].map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

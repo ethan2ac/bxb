@@ -21,6 +21,10 @@ export function unauthorized(message = 'Unauthorized'): Response {
   return json({ ok: false, error: message }, 401);
 }
 
+export function forbidden(message = 'Forbidden'): Response {
+  return json({ ok: false, error: message }, 403);
+}
+
 export function notFound(message = 'Not found'): Response {
   return json({ ok: false, error: message }, 404);
 }

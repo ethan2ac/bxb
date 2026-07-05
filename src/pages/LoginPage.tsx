@@ -3,20 +3,39 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth';
 
 export function LoginPage() {
-  const { user, login, loading } = useAuthStore();
+  const { user, login, register, loading } = useAuthStore();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
 
   if (user) return <Navigate to="/" replace />;
+
+  const switchMode = (next: 'login' | 'register') => {
+    setMode(next);
+    setError('');
+    setPassword('');
+    setConfirmPassword('');
+    setInviteCode('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
-      await login(email, password);
+      if (mode === 'register') {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
+        await register(email, password, inviteCode);
+      } else {
+        await login(email, password);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
 
@@ -33,7 +52,9 @@ export function LoginPage() {
               P
             </div>
             <h1 className="text-2xl font-bold tracking-tight-lg text-ink-900">PYB Attendance</h1>
-            <p className="mt-1.5 text-sm text-ink-400">Sign in to manage your program</p>
+            <p className="mt-1.5 text-sm text-ink-400">
+              {mode === 'register' ? 'Create your account' : 'Sign in to manage your program'}
+            </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
@@ -64,20 +85,79 @@ export function LoginPage() {
                 id="password"
                 type="password"
                 required
-                autoComplete="current-password"
+                minLength={mode === 'register' ? 6 : undefined}
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={inputClass}
               />
             </div>
+            {mode === 'register' && (
+              <>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-ink-600">
+                    Confirm Password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="inviteCode" className="block text-sm font-medium text-ink-600">
+                    Invite Code
+                  </label>
+                  <input
+                    id="inviteCode"
+                    type="text"
+                    required
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value)}
+                    className={inputClass}
+                    placeholder="Ask the site owner for this"
+                  />
+                </div>
+              </>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="w-full rounded-pill bg-accent-charcoal px-6 py-3 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Please wait...' : mode === 'register' ? 'Create Account' : 'Sign In'}
             </button>
           </form>
+          <p className="mt-6 text-center text-sm text-ink-400">
+            {mode === 'register' ? (
+              <>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="font-medium text-ink-700 hover:underline"
+                >
+                  Sign in
+                </button>
+              </>
+            ) : (
+              <>
+                Need an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => switchMode('register')}
+                  className="font-medium text-ink-700 hover:underline"
+                >
+                  Register
+                </button>
+              </>
+            )}
+          </p>
         </div>
       </div>
     </div>

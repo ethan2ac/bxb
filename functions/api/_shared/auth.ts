@@ -1,4 +1,4 @@
-import { unauthorized } from './response';
+import { unauthorized, forbidden } from './response';
 import { verifySessionToken } from './crypto';
 
 interface Env {
@@ -47,5 +47,12 @@ export async function getAuthUser(request: Request, env: Env): Promise<AuthUser 
 export async function requireAuth(request: Request, env: Env): Promise<AuthUser | Response> {
   const user = await getAuthUser(request, env);
   if (!user) return unauthorized();
+  return user;
+}
+
+export async function requireOwner(request: Request, env: Env): Promise<AuthUser | Response> {
+  const user = await getAuthUser(request, env);
+  if (!user) return unauthorized();
+  if (user.role !== 'owner') return forbidden('Only the owner account can manage users');
   return user;
 }

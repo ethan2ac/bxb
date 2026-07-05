@@ -14,6 +14,7 @@ import { SchedulePage } from '../pages/SchedulePage';
 import { EventAttendancePage } from '../pages/EventAttendancePage';
 import { ForecastPage } from '../pages/ForecastPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { AdminUsersPage } from '../pages/AdminUsersPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -54,6 +55,7 @@ export function App() {
           <Route path="forecast" element={<ForecastPage />} />
           <Route path="forecast/:eventId" element={<ForecastPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="admin/users" element={<AdminUsersPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
