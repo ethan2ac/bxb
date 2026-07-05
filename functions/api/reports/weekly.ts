@@ -13,26 +13,48 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const url = new URL(request.url);
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
   const group = url.searchParams.get('group');
+  const today = new Date().toISOString().split('T')[0];
 
+  // Exclude future-dated sessions: nothing has happened yet, so they should
+  // never outrank today as the "latest" session under ORDER BY date DESC.
   const sessions = await env.DB.prepare(
-    'SELECT * FROM sessions ORDER BY session_date DESC LIMIT ?',
+    'SELECT * FROM sessions WHERE session_date <= ? ORDER BY session_date DESC LIMIT ?',
   )
-    .bind(limit)
+    .bind(today, limit)
     .all();
 
-  const studentCountQuery = group
-    ? 'SELECT COUNT(*) as count FROM students WHERE active = 1 AND group_name = ?'
-    : 'SELECT COUNT(*) as count FROM students WHERE active = 1';
-  const activeStudentCount = await env.DB.prepare(studentCountQuery)
-    .bind(...(group ? [group] : []))
-    .first<{ count: number }>();
-
-  const enrolled = activeStudentCount?.count || 0;
+  const byCount = await env.DB.prepare(
+    "SELECT COUNT(*) as count FROM students WHERE active = 1 AND group_name = 'BY'",
+  ).first<{ count: number }>();
+  const jdyCount = await env.DB.prepare(
+    "SELECT COUNT(*) as count FROM students WHERE active = 1 AND group_name = 'JDY'",
+  ).first<{ count: number }>();
+  const byEnrolled = byCount?.count || 0;
+  const jdyEnrolled = jdyCount?.count || 0;
 
   const weeks = [];
   for (const session of sessions.results || []) {
     const sessionId = session.id as string;
-    const statsQuery = group
+    const sessionDate = session.session_date as string;
+
+    // Without an explicit group filter, detect which group(s) the day's
+    // scheduled event(s) actually cover instead of always averaging over the
+    // full combined roster.
+    let effectiveGroup = group;
+    if (!effectiveGroup) {
+      const dayEvents = await env.DB.prepare('SELECT group_scope FROM events WHERE event_date = ?')
+        .bind(sessionDate)
+        .all<{ group_scope: string }>();
+      const scopes = new Set((dayEvents.results || []).map((e) => e.group_scope));
+      if (scopes.size > 0 && !scopes.has('BOTH') && !(scopes.has('BY') && scopes.has('JDY'))) {
+        effectiveGroup = scopes.has('JDY') ? 'JDY' : 'BY';
+      }
+    }
+
+    const enrolled =
+      effectiveGroup === 'BY' ? byEnrolled : effectiveGroup === 'JDY' ? jdyEnrolled : byEnrolled + jdyEnrolled;
+
+    const statsQuery = effectiveGroup
       ? `SELECT
            COUNT(*) as total,
            SUM(CASE WHEN ar.status = 'present' THEN 1 ELSE 0 END) as present,
@@ -51,7 +73,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
          FROM attendance_records
          WHERE session_id = ?`;
     const stats = await env.DB.prepare(statsQuery)
-      .bind(...(group ? [sessionId, group] : [sessionId]))
+      .bind(...(effectiveGroup ? [sessionId, effectiveGroup] : [sessionId]))
       .first<{ total: number; present: number; late: number; absent: number; excused: number }>();
 
     const total = stats?.total || 0;
