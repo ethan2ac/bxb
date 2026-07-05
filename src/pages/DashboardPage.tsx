@@ -41,9 +41,12 @@ export function DashboardPage() {
   const latestWeek = weeks?.[0];
   const attendanceRate = latestWeek?.attendance_rate ?? 0;
   const lateCount = latestWeek?.late ?? 0;
+  const excusedCount = latestWeek?.excused ?? 0;
   const noShowCount = noShows?.length || 0;
 
-  const totalRecorded = latestWeek ? latestWeek.present + latestWeek.late + latestWeek.absent : 0;
+  const totalRecorded = latestWeek
+    ? latestWeek.present + latestWeek.late + latestWeek.absent + latestWeek.excused
+    : 0;
 
   return (
     <div className="space-y-8">
@@ -70,6 +73,10 @@ export function DashboardPage() {
             <p className="mt-1 text-3xl font-bold tracking-tight-lg text-accent-yellow-text">{lateCount}</p>
           </div>
           <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight-lg text-status-info">{excusedCount}</p>
+          </div>
+          <div className="rounded-card border border-ink-100 bg-white px-6 py-4 shadow-card">
             <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Rate</p>
             <p className="mt-1 text-3xl font-bold tracking-tight-lg text-status-success">{attendanceRate}%</p>
           </div>
@@ -90,6 +97,7 @@ export function DashboardPage() {
           <div className="space-y-3">
             <ProgressBar label="Present" value={latestWeek.present} total={totalRecorded} color="bg-status-success" />
             <ProgressBar label="Late" value={latestWeek.late} total={totalRecorded} color="bg-accent-yellow" />
+            <ProgressBar label="Excused" value={latestWeek.excused} total={totalRecorded} color="bg-status-info" />
             <ProgressBar label="Absent" value={latestWeek.absent} total={totalRecorded} color="bg-status-danger/60" />
           </div>
         </div>
@@ -207,6 +215,7 @@ export function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   {week.late > 0 && <Badge variant="late">{week.late} late</Badge>}
+                  {week.excused > 0 && <Badge variant="excused">{week.excused} excused</Badge>}
                   {week.absent > 0 && <Badge variant="absent">{week.absent} absent</Badge>}
                   <span className="min-w-[3rem] text-right text-sm font-semibold text-ink-600">
                     {week.attendance_rate}%

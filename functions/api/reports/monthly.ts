@@ -56,18 +56,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     .all<MonthRow>();
 
   const trend = (rows.results || [])
-    .map((row) => {
-      const countable = row.total - row.excused;
-      return {
-        month: row.month,
-        present: row.present,
-        late: row.late,
-        absent: row.absent,
-        excused: row.excused,
-        total: row.total,
-        attendance_rate: countable > 0 ? Math.round(((row.present + row.late) / countable) * 100) : 0,
-      };
-    })
+    .map((row) => ({
+      month: row.month,
+      present: row.present,
+      late: row.late,
+      absent: row.absent,
+      excused: row.excused,
+      total: row.total,
+      // Excused counts against the rate the same as absent — not excluded
+      // from the denominator — so this stays consistent with weekly.ts.
+      attendance_rate: row.total > 0 ? Math.round(((row.present + row.late) / row.total) * 100) : 0,
+    }))
     .reverse();
 
   return success(trend);

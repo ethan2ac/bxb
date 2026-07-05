@@ -81,8 +81,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const late = stats?.late || 0;
     const absent = stats?.absent || 0;
     const excused = stats?.excused || 0;
-    const countable = enrolled - excused;
 
+    // Excused counts against the rate the same as absent (not excluded from
+    // the denominator) so the rate/trend stays consistent with the raw
+    // present+late+absent+excused breakdown shown elsewhere on the page.
     weeks.push({
       session,
       enrolled,
@@ -91,7 +93,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       absent,
       excused,
       total,
-      attendance_rate: countable > 0 ? Math.round(((present + late) / countable) * 100) : 0,
+      attendance_rate: enrolled > 0 ? Math.round(((present + late) / enrolled) * 100) : 0,
     });
   }
 
