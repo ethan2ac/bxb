@@ -242,6 +242,9 @@ export function StudentDetailPage() {
                     <div>
                       <p className="text-sm font-medium text-ink-700">
                         {record.session_date ? formatDate(record.session_date) : '-'}
+                        {record.occurrence_name && (
+                          <span className="ml-2 text-xs font-normal text-ink-400">{record.occurrence_name}</span>
+                        )}
                       </p>
                       {record.check_in_timestamp && (
                         <p className="mt-0.5 text-xs text-ink-400">

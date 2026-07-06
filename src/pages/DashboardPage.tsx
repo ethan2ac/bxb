@@ -88,7 +88,8 @@ export function DashboardPage() {
         <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink-700">
-              Latest Session &mdash; {formatDate(latestWeek.session.session_date)}
+              Latest Session &mdash; {formatDate(latestWeek.occurrence_date)}
+              {latestWeek.occurrence_name && ` · ${latestWeek.occurrence_name}`}
             </h2>
             <span className="rounded-pill bg-ink-100 px-3 py-1 text-xs font-medium text-ink-500">
               {latestWeek.present + latestWeek.late}/{latestWeek.enrolled} attended
@@ -197,7 +198,7 @@ export function DashboardPage() {
           {weeks && weeks.length > 0 ? (
             weeks.map((week) => (
               <div
-                key={week.session.id}
+                key={week.occurrence_id}
                 className="flex items-center justify-between px-7 py-4 transition-colors hover:bg-ink-50/50"
               >
                 <div className="flex items-center gap-4">
@@ -206,7 +207,10 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-ink-700">
-                      {formatDate(week.session.session_date)}
+                      {formatDate(week.occurrence_date)}
+                      {week.occurrence_name && (
+                        <span className="ml-2 text-xs font-normal text-ink-400">{week.occurrence_name}</span>
+                      )}
                     </p>
                     <p className="text-xs text-ink-400">
                       {week.present + week.late}/{week.enrolled} attended

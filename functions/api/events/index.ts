@@ -1,7 +1,7 @@
 import { success, created, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateEvent } from '../_shared/validation';
-import { generateId, now, getSettings } from '../_shared/db';
+import { generateId, now, getSettings, attachInviteeIds } from '../_shared/db';
 import { logAudit } from '../_shared/audit';
 
 interface Env {
@@ -45,7 +45,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   bindings.push(limit, offset);
 
   const result = await env.DB.prepare(query).bind(...bindings).all();
-  return success(result.results);
+  const events = await attachInviteeIds(env.DB, result.results as { id: string }[]);
+  return success(events);
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -61,12 +62,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const timestamp = now();
   const startTime = (body.start_time as string) || settings.default_start_time;
   const threshold = (body.late_threshold_minutes as number) || parseInt(settings.default_late_threshold_minutes, 10);
+  const restrictedRoster = body.restricted_roster === true;
+  const inviteeIds = restrictedRoster ? (body.invitee_student_ids as string[]) : [];
 
-  await env.DB.prepare(
-    `INSERT INTO events (id, name, event_date, group_scope, start_time, late_threshold_minutes, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
+  const statements = [
+    env.DB.prepare(
+      `INSERT INTO events (id, name, event_date, group_scope, start_time, late_threshold_minutes, notes, restricted_roster, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
       id,
       (body.name as string).trim(),
       body.event_date,
@@ -74,10 +77,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       startTime,
       threshold,
       body.notes || null,
+      restrictedRoster ? 1 : 0,
       timestamp,
       timestamp,
-    )
-    .run();
+    ),
+    ...inviteeIds.map((studentId) =>
+      env.DB.prepare('INSERT INTO event_invitees (event_id, student_id) VALUES (?, ?)').bind(id, studentId),
+    ),
+  ];
+  await env.DB.batch(statements);
 
   const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?').bind(id).first();
   await logAudit(env.DB, {
@@ -87,5 +95,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     action: 'create',
     metadata: { name: body.name, event_date: body.event_date, group_scope: body.group_scope },
   });
-  return created(event);
+  return created({ ...event, invitee_student_ids: inviteeIds });
 };

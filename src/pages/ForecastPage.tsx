@@ -112,25 +112,35 @@ export function ForecastPage() {
   const [statusFilter, setStatusFilter] = useState<ForecastExpectation | 'all'>('all');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showAllEvents, setShowAllEvents] = useState(false);
 
   const upcomingEvents = (events || [])
     .filter((e) => e.event_date >= new Date().toISOString().split('T')[0])
-    .sort((a, b) => a.event_date.localeCompare(b.event_date));
+    .sort((a, b) => a.event_date.localeCompare(b.event_date) || a.start_time.localeCompare(b.start_time));
 
   const selectedEvent = events?.find((e) => e.id === eventId) || null;
   const dropdownEvents =
     selectedEvent && !upcomingEvents.some((e) => e.id === selectedEvent.id)
       ? [selectedEvent, ...upcomingEvents]
       : upcomingEvents;
+  const EVENT_DROPDOWN_LIMIT = 6;
+  const visibleEvents = showAllEvents ? dropdownEvents : dropdownEvents.slice(0, EVENT_DROPDOWN_LIMIT);
+  const hasMoreEvents = !showAllEvents && dropdownEvents.length > EVENT_DROPDOWN_LIMIT;
+
+  const handleEventSelect = (value: string) => {
+    if (value === '__more__') {
+      setShowAllEvents(true);
+      return;
+    }
+    setEventId(value);
+  };
 
   const load = useCallback(async () => {
     if (!eventId || !selectedEvent) return;
     setLoading(true);
     try {
-      const studentsUrl =
-        selectedEvent.group_scope === 'BOTH' ? '/api/students' : `/api/students?group=${selectedEvent.group_scope}`;
       const [students, forecastData] = await Promise.all([
-        api.get<Student[]>(studentsUrl),
+        api.get<Student[]>(`/api/events/${eventId}/roster`),
         api.get<{ event: CalendarEvent; records: Forecast[] }>(`/api/forecasts?eventId=${eventId}`),
       ]);
 
@@ -237,15 +247,16 @@ export function ForecastPage() {
         <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">Event</label>
         <select
           value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
+          onChange={(e) => handleEventSelect(e.target.value)}
           className="mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
         >
           <option value="">Select an upcoming event...</option>
-          {dropdownEvents.map((e) => (
+          {visibleEvents.map((e) => (
             <option key={e.id} value={e.id}>
               {e.name} &mdash; {formatDate(e.event_date)}
             </option>
           ))}
+          {hasMoreEvents && <option value="__more__">Show more events&hellip;</option>}
         </select>
       </div>
 

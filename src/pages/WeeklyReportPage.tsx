@@ -6,7 +6,7 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
-import type { WeeklyReport, AttendanceRecord } from '../types';
+import type { WeeklyReport, AttendanceRecord, EventAttendanceRecord } from '../types';
 import { api } from '../lib/api';
 
 export function WeeklyReportPage() {
@@ -14,22 +14,25 @@ export function WeeklyReportPage() {
   const groupQs = group !== 'ALL' ? `group=${group}&` : '';
   const { data: weeks, loading } = useApi<WeeklyReport[]>(`/api/reports/weekly?${groupQs}limit=20`);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [details, setDetails] = useState<Record<string, AttendanceRecord[]>>({});
+  const [details, setDetails] = useState<Record<string, (AttendanceRecord | EventAttendanceRecord)[]>>({});
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
 
-  const toggleExpand = async (sessionId: string) => {
-    if (expandedId === sessionId) {
+  const toggleExpand = async (week: WeeklyReport) => {
+    const occurrenceId = week.occurrence_id;
+    if (expandedId === occurrenceId) {
       setExpandedId(null);
       return;
     }
-    setExpandedId(sessionId);
-    if (!details[sessionId]) {
-      setLoadingDetails(sessionId);
+    setExpandedId(occurrenceId);
+    if (!details[occurrenceId]) {
+      setLoadingDetails(occurrenceId);
       try {
-        const data = await api.get<{ session: unknown; records: AttendanceRecord[] }>(
-          `/api/attendance?sessionId=${sessionId}`,
-        );
-        setDetails((prev) => ({ ...prev, [sessionId]: data.records }));
+        const url =
+          week.occurrence_type === 'event'
+            ? `/api/event-attendance?eventId=${occurrenceId}`
+            : `/api/attendance?sessionId=${occurrenceId}`;
+        const data = await api.get<{ records: (AttendanceRecord | EventAttendanceRecord)[] }>(url);
+        setDetails((prev) => ({ ...prev, [occurrenceId]: data.records }));
       } catch {
         // silently fail
       } finally {
@@ -68,14 +71,14 @@ export function WeeklyReportPage() {
       <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
         <div className="divide-y divide-ink-100">
           {weeks.map((week) => (
-            <Fragment key={week.session.id}>
+            <Fragment key={week.occurrence_id}>
               <div
                 className="flex cursor-pointer items-center justify-between px-7 py-5 transition-colors hover:bg-ink-50/50"
-                onClick={() => toggleExpand(week.session.id)}
+                onClick={() => toggleExpand(week)}
               >
                 <div className="flex items-center gap-4">
                   <div className="text-ink-300">
-                    {expandedId === week.session.id ? (
+                    {expandedId === week.occurrence_id ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronRight className="h-4 w-4" />
@@ -83,7 +86,10 @@ export function WeeklyReportPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-ink-800">
-                      {formatDate(week.session.session_date)}
+                      {formatDate(week.occurrence_date)}
+                      {week.occurrence_name && (
+                        <span className="ml-2 text-xs font-normal text-ink-400">{week.occurrence_name}</span>
+                      )}
                     </p>
                     <p className="mt-0.5 text-xs text-ink-400">
                       {week.present + week.late}/{week.enrolled} attended
@@ -112,13 +118,13 @@ export function WeeklyReportPage() {
                   </span>
                 </div>
               </div>
-              {expandedId === week.session.id && (
+              {expandedId === week.occurrence_id && (
                 <div className="border-t border-ink-100 bg-ink-50/50 px-5 py-5 sm:px-12">
-                  {loadingDetails === week.session.id ? (
+                  {loadingDetails === week.occurrence_id ? (
                     <LoadingSpinner className="py-4" />
-                  ) : details[week.session.id]?.length ? (
+                  ) : details[week.occurrence_id]?.length ? (
                     <div className="space-y-1.5">
-                      {details[week.session.id].map((r) => (
+                      {details[week.occurrence_id].map((r) => (
                         <div
                           key={r.id}
                           className={`flex items-center justify-between gap-3 rounded-card-sm px-4 py-2.5 text-sm ${

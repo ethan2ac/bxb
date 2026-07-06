@@ -6,6 +6,20 @@ interface Env {
   SESSION_SECRET?: string;
 }
 
+interface WeeklyRow {
+  occurrence_type: 'session' | 'event';
+  occurrence_id: string;
+  occurrence_date: string;
+  occurrence_name: string | null;
+  enrolled: number;
+  present: number;
+  late: number;
+  absent: number;
+  excused: number;
+  total: number;
+  attendance_rate: number;
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
@@ -14,14 +28,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
   const group = url.searchParams.get('group');
   const today = new Date().toISOString().split('T')[0];
-
-  // Exclude future-dated sessions: nothing has happened yet, so they should
-  // never outrank today as the "latest" session under ORDER BY date DESC.
-  const sessions = await env.DB.prepare(
-    'SELECT * FROM sessions WHERE session_date <= ? ORDER BY session_date DESC LIMIT ?',
-  )
-    .bind(today, limit)
-    .all();
 
   const byCount = await env.DB.prepare(
     "SELECT COUNT(*) as count FROM students WHERE active = 1 AND group_name = 'BY'",
@@ -32,14 +38,24 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const byEnrolled = byCount?.count || 0;
   const jdyEnrolled = jdyCount?.count || 0;
 
-  const weeks = [];
+  // Exclude future-dated occurrences: nothing has happened yet, so they
+  // should never outrank today as the "latest" occurrence under DATE DESC.
+  const sessions = await env.DB.prepare(
+    'SELECT * FROM sessions WHERE session_date <= ? ORDER BY session_date DESC LIMIT ?',
+  )
+    .bind(today, limit)
+    .all();
+
+  const weeks: WeeklyRow[] = [];
+
   for (const session of sessions.results || []) {
     const sessionId = session.id as string;
     const sessionDate = session.session_date as string;
 
     // Without an explicit group filter, detect which group(s) the day's
     // scheduled event(s) actually cover instead of always averaging over the
-    // full combined roster.
+    // full combined roster. This fallback only applies to legacy sessions —
+    // real events (below) already carry their own group_scope directly.
     let effectiveGroup = group;
     if (!effectiveGroup) {
       const dayEvents = await env.DB.prepare('SELECT group_scope FROM events WHERE event_date = ?')
@@ -86,7 +102,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     // the denominator) so the rate/trend stays consistent with the raw
     // present+late+absent+excused breakdown shown elsewhere on the page.
     weeks.push({
-      session,
+      occurrence_type: 'session',
+      occurrence_id: sessionId,
+      occurrence_date: sessionDate,
+      occurrence_name: null,
       enrolled,
       present,
       late,
@@ -97,5 +116,74 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
-  return success(weeks);
+  // Events that have never had attendance taken are excluded — otherwise
+  // every future/untouched event would show up as a zero-stat phantom row.
+  let eventsQuery = `
+    SELECT * FROM events e
+    WHERE e.event_date <= ?
+      AND EXISTS (SELECT 1 FROM event_attendance_records WHERE event_id = e.id)
+  `;
+  const eventsBindings: unknown[] = [today];
+  if (group) {
+    eventsQuery += " AND (e.group_scope = ? OR e.group_scope = 'BOTH')";
+    eventsBindings.push(group);
+  }
+  eventsQuery += ' ORDER BY e.event_date DESC LIMIT ?';
+  eventsBindings.push(limit);
+
+  const events = await env.DB.prepare(eventsQuery).bind(...eventsBindings).all();
+
+  for (const event of events.results || []) {
+    const eventId = event.id as string;
+    const eventScope = event.group_scope as string;
+    const effectiveGroup = group || eventScope;
+    const enrolled =
+      effectiveGroup === 'BY' ? byEnrolled : effectiveGroup === 'JDY' ? jdyEnrolled : byEnrolled + jdyEnrolled;
+
+    const statsQuery = group
+      ? `SELECT
+           COUNT(*) as total,
+           SUM(CASE WHEN ear.status = 'present' THEN 1 ELSE 0 END) as present,
+           SUM(CASE WHEN ear.status = 'late' THEN 1 ELSE 0 END) as late,
+           SUM(CASE WHEN ear.status = 'absent' THEN 1 ELSE 0 END) as absent,
+           SUM(CASE WHEN ear.status = 'excused' THEN 1 ELSE 0 END) as excused
+         FROM event_attendance_records ear
+         JOIN students st ON st.id = ear.student_id
+         WHERE ear.event_id = ? AND st.group_name = ?`
+      : `SELECT
+           COUNT(*) as total,
+           SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
+           SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
+           SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
+           SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused
+         FROM event_attendance_records
+         WHERE event_id = ?`;
+    const stats = await env.DB.prepare(statsQuery)
+      .bind(...(group ? [eventId, group] : [eventId]))
+      .first<{ total: number; present: number; late: number; absent: number; excused: number }>();
+
+    const total = stats?.total || 0;
+    const present = stats?.present || 0;
+    const late = stats?.late || 0;
+    const absent = stats?.absent || 0;
+    const excused = stats?.excused || 0;
+
+    weeks.push({
+      occurrence_type: 'event',
+      occurrence_id: eventId,
+      occurrence_date: event.event_date as string,
+      occurrence_name: event.name as string,
+      enrolled,
+      present,
+      late,
+      absent,
+      excused,
+      total,
+      attendance_rate: enrolled > 0 ? Math.round(((present + late) / enrolled) * 100) : 0,
+    });
+  }
+
+  weeks.sort((a, b) => b.occurrence_date.localeCompare(a.occurrence_date) || b.occurrence_id.localeCompare(a.occurrence_id));
+
+  return success(weeks.slice(0, limit));
 };

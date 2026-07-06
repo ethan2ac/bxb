@@ -99,6 +99,11 @@ export function validateEvent(body: Record<string, unknown>): ValidationError[] 
   if (body.late_threshold_minutes !== undefined && !isPositiveInteger(body.late_threshold_minutes)) {
     errors.push({ field: 'late_threshold_minutes', message: 'Late threshold must be a positive integer' });
   }
+  if (body.restricted_roster === true) {
+    if (!Array.isArray(body.invitee_student_ids) || body.invitee_student_ids.length === 0) {
+      errors.push({ field: 'invitee_student_ids', message: 'Select at least one student who is attending' });
+    }
+  }
   return errors;
 }
 
