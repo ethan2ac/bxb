@@ -34,6 +34,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   if (errors.length > 0) return badRequest(errors.map((e) => e.message).join(', '));
 
   const { englishName, age } = resolveStudentNameAndAge(body);
+  const level = body.group_name === 'JDY' ? 'JDY' : (body.level as string).trim();
 
   await env.DB.prepare(
     `UPDATE students SET english_name = ?, chinese_name = ?, group_name = ?, level = ?, age = ?, gender = ?, birthday = ?, phone = ?, description = ?, updated_at = ?
@@ -43,7 +44,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       englishName,
       body.english_name && body.chinese_name ? (body.chinese_name as string).trim() : null,
       body.group_name,
-      (body.level as string).trim(),
+      level,
       age,
       (body.gender as string).trim(),
       body.birthday || null,

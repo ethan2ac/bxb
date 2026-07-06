@@ -10,7 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { StudentForm } from '../components/StudentForm';
 import { displayName, initials, groupLabel, editableNameFields } from '../utils/students';
-import { BY_LEVELS, JDY_ROLES } from '../types';
+import { BY_LEVELS } from '../types';
 import type { Student, StudentFormData, GroupName } from '../types';
 
 function StudentInitials({ student }: { student: Student }) {
@@ -49,8 +49,6 @@ export function StudentsPage() {
     if (showArchived) return matchesSearch && s.active === 0;
     return matchesSearch && s.active === 1;
   });
-
-  const levelOptions = groupFilter === 'JDY' ? JDY_ROLES : BY_LEVELS;
 
   const handleGroupFilterChange = (group: GroupFilter) => {
     setGroupFilter(group);
@@ -136,7 +134,7 @@ export function StudentsPage() {
             {g === 'ALL' ? 'All Groups' : g}
           </button>
         ))}
-        {groupFilter !== 'ALL' && (
+        {groupFilter === 'BY' && (
           <>
             <span className="mx-1 h-5 w-px bg-ink-200" />
             <button
@@ -147,9 +145,9 @@ export function StudentsPage() {
                   : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
               }`}
             >
-              All {groupFilter === 'JDY' ? 'Roles' : 'Levels'}
+              All Levels
             </button>
-            {levelOptions.map((lvl) => (
+            {BY_LEVELS.map((lvl) => (
               <button
                 key={lvl}
                 onClick={() => setLevelFilter(lvl)}

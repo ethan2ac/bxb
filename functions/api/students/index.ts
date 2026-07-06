@@ -48,6 +48,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const id = generateId('stu');
   const timestamp = now();
   const { englishName, age } = resolveStudentNameAndAge(body);
+  const level = body.group_name === 'JDY' ? 'JDY' : (body.level as string).trim();
 
   await env.DB.prepare(
     `INSERT INTO students (id, english_name, chinese_name, group_name, level, age, gender, birthday, phone, description, active, created_at, updated_at)
@@ -58,7 +59,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       englishName,
       body.english_name && body.chinese_name ? (body.chinese_name as string).trim() : null,
       body.group_name,
-      (body.level as string).trim(),
+      level,
       age,
       (body.gender as string).trim(),
       body.birthday || null,

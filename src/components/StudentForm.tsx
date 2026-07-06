@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BY_LEVELS, JDY_ROLES } from '../types';
+import { BY_LEVELS, JDY_LEVEL } from '../types';
 import type { StudentFormData, GroupName } from '../types';
 
 interface StudentFormProps {
@@ -17,7 +17,7 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
     english_name: initial?.english_name || '',
     chinese_name: initial?.chinese_name || '',
     group_name: initial?.group_name || 'BY',
-    level: initial?.level || '',
+    level: initial?.level || (initial?.group_name === 'JDY' ? JDY_LEVEL : ''),
     age: initial?.age ?? '',
     gender: initial?.gender || '',
     birthday: initial?.birthday || '',
@@ -27,10 +27,13 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const levelOptions = form.group_name === 'JDY' ? JDY_ROLES : BY_LEVELS;
-
   const handleGroupChange = (group_name: GroupName) => {
-    setForm({ ...form, group_name, level: '', age: group_name === 'JDY' ? '' : form.age });
+    setForm({
+      ...form,
+      group_name,
+      level: group_name === 'JDY' ? JDY_LEVEL : '',
+      age: group_name === 'JDY' ? '' : form.age,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,25 +72,27 @@ export function StudentForm({ initial, onSubmit, onCancel, submitLabel = 'Save' 
             <option value="JDY">JDY</option>
           </select>
         </div>
-        <div>
-          <label htmlFor="level" className="block text-sm font-medium text-ink-600">
-            {form.group_name === 'JDY' ? 'Role' : 'Level'}
-          </label>
-          <select
-            id="level"
-            required
-            value={form.level}
-            onChange={(e) => setForm({ ...form, level: e.target.value })}
-            className={inputClass}
-          >
-            <option value="">Select...</option>
-            {levelOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        </div>
+        {form.group_name === 'BY' && (
+          <div>
+            <label htmlFor="level" className="block text-sm font-medium text-ink-600">
+              Level
+            </label>
+            <select
+              id="level"
+              required
+              value={form.level}
+              onChange={(e) => setForm({ ...form, level: e.target.value })}
+              className={inputClass}
+            >
+              <option value="">Select...</option>
+              {BY_LEVELS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

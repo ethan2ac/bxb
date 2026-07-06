@@ -8,7 +8,7 @@ export interface User {
 export type GroupName = 'BY' | 'JDY';
 
 export const BY_LEVELS = ['P4', 'P5', 'P6', 'S1', 'S2', 'S3', 'S4'] as const;
-export const JDY_ROLES = ['Coordinator', 'JDY Member', 'Mentor'] as const;
+export const JDY_LEVEL = 'JDY';
 
 export interface Student {
   id: string;
