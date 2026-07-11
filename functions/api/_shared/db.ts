@@ -7,6 +7,15 @@ export function now(): string {
   return new Date().toISOString();
 }
 
+// "Today" in the org's own timezone (Singapore, UTC+8), not the Worker
+// runtime's UTC clock — during SGT midnight-8am, raw UTC "today" is still
+// yesterday's date, which would otherwise misjudge same-day/past-day
+// comparisons for anything gated on "has this occurrence already happened".
+export function getOrgTodayDate(): string {
+  const sgt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  return sgt.toISOString().split('T')[0];
+}
+
 export const DEFAULT_SETTINGS = {
   no_show_threshold: '3',
   default_start_time: '09:00',
@@ -26,16 +35,30 @@ export async function getSettings(db: D1Database): Promise<SettingsMap> {
   return settings;
 }
 
+// Singapore doesn't observe DST, so +08:00 is always correct — this is a
+// fixed-timezone app, not a per-user-timezone one. Building the threshold
+// with an explicit offset (rather than a bare "Z", which silently treats a
+// wall-clock "09:00" as 09:00 UTC = 5pm SGT) is what makes "late" match what
+// the admin actually typed into the start-time field.
+const ORG_UTC_OFFSET = '+08:00';
+
 export function computeAttendanceStatus(
   checkInTimestamp: string | null,
   sessionStartTime: string,
+  sessionDate: string,
   lateThresholdMinutes: number,
 ): 'present' | 'absent' | 'late' {
   if (!checkInTimestamp) return 'absent';
   const checkIn = new Date(checkInTimestamp);
   const [hours, minutes] = sessionStartTime.split(':').map(Number);
-  const sessionDate = checkInTimestamp.split('T')[0];
-  const threshold = new Date(`${sessionDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000Z`);
+  // sessionDate must be the occurrence's own date (event_date/session_date),
+  // never derived from checkInTimestamp — during the SGT midnight-8am window
+  // a check-in's own UTC date lags a full calendar day behind the true SGT
+  // date, which previously misdated the threshold and made genuinely early
+  // check-ins compute as late.
+  const threshold = new Date(
+    `${sessionDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000${ORG_UTC_OFFSET}`,
+  );
   threshold.setUTCMinutes(threshold.getUTCMinutes() + lateThresholdMinutes);
   return checkIn > threshold ? 'late' : 'present';
 }

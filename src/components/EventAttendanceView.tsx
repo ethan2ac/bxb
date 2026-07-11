@@ -9,7 +9,14 @@ import { GroupSummaryTable } from './GroupSummaryTable';
 import { FilterPanel, type SortBy } from './FilterPanel';
 import { formatDate, getTodayDateString } from '../utils/dates';
 import { displayName, levelSortIndex } from '../utils/students';
-import type { Student, CalendarEvent, EventAttendanceRecord, EventAttendanceEntry, AttendanceStatus } from '../types';
+import type {
+  Student,
+  CalendarEvent,
+  EventAttendanceRecord,
+  EventAttendanceEntry,
+  AttendanceStatus,
+  Forecast,
+} from '../types';
 
 interface RosterEntry {
   student: Student;
@@ -26,6 +33,19 @@ const STATUS_OPTIONS: { value: AttendanceStatus | 'all'; label: string }[] = [
   { value: 'absent', label: 'Absent' },
 ];
 
+// Singapore doesn't observe DST, so +08:00 is always correct — matches
+// computeAttendanceStatus server-side. A bare "Z" here would treat the
+// admin's wall-clock start time as UTC (5pm instead of 9am), making the
+// live preview disagree with what gets saved.
+function computeLiveStatus(checkInIso: string, event: CalendarEvent): 'present' | 'late' {
+  const [h, m] = event.start_time.split(':').map(Number);
+  const threshold = new Date(
+    `${event.event_date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000+08:00`,
+  );
+  threshold.setUTCMinutes(threshold.getUTCMinutes() + event.late_threshold_minutes);
+  return new Date(checkInIso) > threshold ? 'late' : 'present';
+}
+
 // Per-event attendance-taking UI, shared between the main Attendance nav page
 // (which picks an event via date + dropdown) and the Schedule-page deep link
 // into a specific event — each renders attendance independently, never
@@ -34,21 +54,26 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   const { addToast } = useUiStore();
   const [event, setEvent] = useState<CalendarEvent | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
+  const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('name');
+  const [sortBy, setSortBy] = useState<SortBy>('level');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lateThresholdDraft, setLateThresholdDraft] = useState('');
+  const [savingThreshold, setSavingThreshold] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const eventData = await api.get<CalendarEvent>(`/api/events/${eventId}`);
       setEvent(eventData);
+      setLateThresholdDraft(String(eventData.late_threshold_minutes));
 
-      const [students, attendanceData] = await Promise.all([
+      const [students, attendanceData, forecastData] = await Promise.all([
         api.get<Student[]>(`/api/events/${eventId}/roster`),
         api.get<{ event: CalendarEvent; records: EventAttendanceRecord[] }>(`/api/event-attendance?eventId=${eventId}`),
+        api.get<{ event: CalendarEvent; records: Forecast[] }>(`/api/forecasts?eventId=${eventId}`),
       ]);
 
       const recordMap = new Map<string, EventAttendanceRecord>();
@@ -67,6 +92,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
           };
         }),
       );
+      setForecasts(forecastData.records || []);
     } catch (e) {
       addToast(e instanceof Error ? e.message : 'Failed to load event', 'error');
     } finally {
@@ -85,15 +111,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
 
         if (entry.status === 'absent') {
           const ts = new Date().toISOString();
-          let status: AttendanceStatus = 'present';
-          if (event) {
-            const [h, m] = event.start_time.split(':').map(Number);
-            const threshold = new Date(
-              `${event.event_date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`,
-            );
-            threshold.setUTCMinutes(threshold.getUTCMinutes() + event.late_threshold_minutes);
-            if (new Date(ts) > threshold) status = 'late';
-          }
+          const status: AttendanceStatus = event ? computeLiveStatus(ts, event) : 'present';
           return { ...entry, status, check_in_timestamp: ts };
         }
 
@@ -104,6 +122,44 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
         return { ...entry, status: 'absent', check_in_timestamp: null };
       }),
     );
+  };
+
+  const saveLateThreshold = async () => {
+    if (!event) return;
+    const minutes = parseInt(lateThresholdDraft, 10);
+    if (!Number.isInteger(minutes) || minutes < 1) {
+      addToast('Late threshold must be a positive number of minutes', 'error');
+      return;
+    }
+    setSavingThreshold(true);
+    try {
+      const updated = await api.put<CalendarEvent>(`/api/events/${event.id}`, {
+        name: event.name,
+        event_date: event.event_date,
+        group_scope: event.group_scope,
+        start_time: event.start_time,
+        late_threshold_minutes: minutes,
+        notes: event.notes,
+        restricted_roster: event.restricted_roster === 1,
+        invitee_student_ids: event.invitee_student_ids,
+      });
+      setEvent(updated);
+      // Re-evaluate everyone already checked in against the new threshold
+      // immediately, rather than leaving badges showing a stale present/late
+      // split until the next tap or page reload.
+      setRoster((prev) =>
+        prev.map((entry) =>
+          entry.check_in_timestamp
+            ? { ...entry, status: computeLiveStatus(entry.check_in_timestamp, updated) }
+            : entry,
+        ),
+      );
+      addToast('Late threshold updated', 'success');
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : 'Failed to update late threshold', 'error');
+    } finally {
+      setSavingThreshold(false);
+    }
   };
 
   const saveAttendance = async () => {
@@ -159,6 +215,27 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   const jdyStats = groupStats(roster.filter((e) => e.student.group_name === 'JDY'));
   const groupLabels = isBoth ? ['BY', 'JDY'] : [event?.group_scope === 'JDY' ? 'JDY' : 'BY'];
   const summaryStats = isBoth ? [byStats, jdyStats] : event?.group_scope === 'JDY' ? [jdyStats] : [byStats];
+
+  const forecastByStudent = new Map(forecasts.map((f) => [f.student_id, f.expected]));
+  const groupForecastStats = (entries: RosterEntry[]) => {
+    let expected = 0;
+    let notExpected = 0;
+    let excused = 0;
+    for (const entry of entries) {
+      const value = forecastByStudent.get(entry.student.id) || 'no';
+      if (value === 'yes') expected++;
+      else if (value === 'excused') excused++;
+      else notExpected++;
+    }
+    return { expected, notExpected, excused, total: entries.length };
+  };
+  const byForecastStats = groupForecastStats(roster.filter((e) => e.student.group_name === 'BY'));
+  const jdyForecastStats = groupForecastStats(roster.filter((e) => e.student.group_name === 'JDY'));
+  const forecastSummaryStats = isBoth
+    ? [byForecastStats, jdyForecastStats]
+    : event?.group_scope === 'JDY'
+      ? [jdyForecastStats]
+      : [byForecastStats];
 
   if (loading || !event) return <LoadingSpinner />;
 
@@ -272,7 +349,39 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
             />
           </div>
           <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
-            <h3 className="text-sm font-semibold text-ink-700">Attendance Summary</h3>
+            <h3 className="text-sm font-semibold text-ink-700">Forecast Summary</h3>
+            <p className="mt-0.5 text-xs text-ink-400">Who was expected, from the Forecast page</p>
+            <div className="mt-4">
+              <GroupSummaryTable
+                groupLabels={groupLabels}
+                rows={[
+                  { key: 'enrolled', label: 'Enrolled', values: forecastSummaryStats.map((s) => s.total) },
+                  {
+                    key: 'expected',
+                    label: 'Expected',
+                    dotClassName: 'bg-status-success',
+                    values: forecastSummaryStats.map((s) => s.expected),
+                  },
+                  {
+                    key: 'excused',
+                    label: 'Excused',
+                    dotClassName: 'bg-status-info',
+                    values: forecastSummaryStats.map((s) => s.excused),
+                  },
+                  {
+                    key: 'not-expected',
+                    label: 'Not Expected',
+                    dotClassName: 'bg-status-danger/60',
+                    values: forecastSummaryStats.map((s) => s.notExpected),
+                  },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
+            <h3 className="text-sm font-semibold text-ink-700">Actual Attendance Summary</h3>
+            <p className="mt-0.5 text-xs text-ink-400">Live, as attendance is taken below</p>
             <div className="mt-4">
               <GroupSummaryTable
                 groupLabels={groupLabels}
@@ -314,9 +423,31 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
                 <span className="text-ink-400">Start time</span>
                 <span className="font-medium text-ink-700">{event.start_time}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-ink-400">Late after</span>
-                <span className="font-medium text-ink-700">{event.late_threshold_minutes} min</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex-shrink-0 text-ink-400">Late after</span>
+                {isPast ? (
+                  <span className="font-medium text-ink-700">{event.late_threshold_minutes} min</span>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      value={lateThresholdDraft}
+                      onChange={(e) => setLateThresholdDraft(e.target.value)}
+                      className="w-16 rounded-card-sm border border-ink-200 bg-ink-50/50 px-2 py-1 text-right text-sm text-ink-700 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+                    />
+                    <span className="text-ink-400">min</span>
+                    {lateThresholdDraft !== String(event.late_threshold_minutes) && (
+                      <button
+                        onClick={saveLateThreshold}
+                        disabled={savingThreshold}
+                        className="rounded-pill bg-accent-charcoal px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
+                      >
+                        {savingThreshold ? '...' : 'Update'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -31,7 +31,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     bindings.push(level);
   }
   if (conditions.length > 0) query += ' WHERE ' + conditions.join(' AND ');
-  query += ' ORDER BY english_name ASC';
+  // Mirrors levelSortIndex on the frontend (JDY, then the P4-S4 progression),
+  // rather than the previous alphabetical-by-name default.
+  query += ` ORDER BY CASE level
+    WHEN 'JDY' THEN 0
+    WHEN 'P4' THEN 1
+    WHEN 'P5' THEN 2
+    WHEN 'P6' THEN 3
+    WHEN 'S1' THEN 4
+    WHEN 'S2' THEN 5
+    WHEN 'S3' THEN 6
+    WHEN 'S4' THEN 7
+    ELSE 8
+  END, english_name ASC`;
 
   const result = await env.DB.prepare(query).bind(...bindings).all();
   return success(result.results);

@@ -32,7 +32,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const session = await env.DB.prepare('SELECT * FROM sessions WHERE id = ?')
     .bind(body.session_id)
-    .first<{ id: string; start_time: string; late_threshold_minutes: number }>();
+    .first<{ id: string; session_date: string; start_time: string; late_threshold_minutes: number }>();
 
   if (!session) return badRequest('Session not found');
 
@@ -52,6 +52,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       status = computeAttendanceStatus(
         entry.check_in_timestamp,
         session.start_time,
+        session.session_date,
         session.late_threshold_minutes,
       );
     }

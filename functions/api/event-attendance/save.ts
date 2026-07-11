@@ -1,7 +1,7 @@
 import { success, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
 import { validateAttendanceStatus } from '../_shared/validation';
-import { generateId, now, computeAttendanceStatus } from '../_shared/db';
+import { generateId, now, computeAttendanceStatus, getOrgTodayDate } from '../_shared/db';
 import { logAudit } from '../_shared/audit';
 
 interface Env {
@@ -41,7 +41,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   // a stray re-save can't silently clobber finalized history. Corrections to
   // a past event go through the single-record amend endpoint instead, which
   // requires a reason and leaves an audit trail.
-  const today = new Date().toISOString().split('T')[0];
+  const today = getOrgTodayDate();
   if (event.event_date < today) {
     return badRequest('This event has already happened. Use Amend on its History page to make changes.');
   }
@@ -62,6 +62,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       status = computeAttendanceStatus(
         entry.check_in_timestamp,
         event.start_time,
+        event.event_date,
         event.late_threshold_minutes,
       );
     }

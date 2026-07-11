@@ -1,5 +1,6 @@
 import { success } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
+import { getOrgTodayDate } from '../_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -27,7 +28,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const url = new URL(request.url);
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
   const group = url.searchParams.get('group');
-  const today = new Date().toISOString().split('T')[0];
+  const today = getOrgTodayDate();
 
   // Exclude future-dated occurrences: nothing has happened yet, so they
   // should never outrank today as the "latest" occurrence under DATE DESC.

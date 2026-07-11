@@ -41,7 +41,8 @@ export function isLate(
 ): boolean {
   const checkIn = new Date(checkInTimestamp);
   const [hours, minutes] = sessionStartTime.split(':').map(Number);
-  const start = new Date(`${sessionDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000Z`);
+  // +08:00 (Singapore, no DST) — matches computeAttendanceStatus server-side.
+  const start = new Date(`${sessionDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000+08:00`);
   const threshold = addMinutes(start, lateThresholdMinutes);
   return checkIn > threshold;
 }

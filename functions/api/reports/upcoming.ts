@@ -1,5 +1,6 @@
 import { success } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
+import { getOrgTodayDate } from '../_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -23,7 +24,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   const url = new URL(request.url);
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getOrgTodayDate();
 
   const events = await env.DB.prepare(
     'SELECT * FROM events WHERE event_date >= ? ORDER BY event_date ASC, start_time ASC LIMIT ?',

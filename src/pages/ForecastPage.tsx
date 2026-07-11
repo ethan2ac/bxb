@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { GroupSummaryTable } from '../components/GroupSummaryTable';
 import { FilterPanel, type SortBy } from '../components/FilterPanel';
-import { formatDate } from '../utils/dates';
+import { formatDate, getTodayDateString } from '../utils/dates';
 import { displayName, levelSortIndex } from '../utils/students';
 import type { Student, CalendarEvent, Forecast, ForecastEntry, ForecastExpectation } from '../types';
 
@@ -108,7 +108,7 @@ export function ForecastPage() {
   const [eventId, setEventId] = useState(routeEventId || '');
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortBy>('name');
+  const [sortBy, setSortBy] = useState<SortBy>('level');
   const [statusFilter, setStatusFilter] = useState<ForecastExpectation | 'all'>('all');
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -116,7 +116,7 @@ export function ForecastPage() {
   const [showAllEvents, setShowAllEvents] = useState(false);
 
   const upcomingEvents = (events || [])
-    .filter((e) => e.event_date >= new Date().toISOString().split('T')[0])
+    .filter((e) => e.event_date >= getTodayDateString())
     .sort((a, b) => a.event_date.localeCompare(b.event_date) || a.start_time.localeCompare(b.start_time));
 
   const selectedEvent = events?.find((e) => e.id === eventId) || null;

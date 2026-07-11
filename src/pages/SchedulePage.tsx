@@ -9,7 +9,7 @@ import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { MonthCalendar } from '../components/MonthCalendar';
 import { EventForm, eventFormDataFrom, type EventFormData } from '../components/EventForm';
-import { formatDate } from '../utils/dates';
+import { formatDate, getTodayDateString } from '../utils/dates';
 import type { CalendarEvent } from '../types';
 
 type ModalState =
@@ -83,7 +83,7 @@ export function SchedulePage() {
         {modal.type === 'day' && (
           <div className="space-y-3">
             {modal.events.map((event) => {
-              const isFuture = event.event_date > new Date().toISOString().split('T')[0];
+              const isFuture = event.event_date > getTodayDateString();
               return (
                 <div
                   key={event.id}
