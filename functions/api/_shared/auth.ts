@@ -13,10 +13,16 @@ export interface AuthUser {
   role: string;
 }
 
-const DEFAULT_SECRET = 'pyb-default-secret-change-in-production';
-
+// No hardcoded fallback: a default secret committed to source would let
+// anyone forge session tokens on any deployment that's missing the real
+// one (e.g. a preview environment sharing the production D1 database).
+// Failing closed here means a misconfigured environment can't serve
+// requests at all rather than silently authenticating as anyone.
 export function getSecret(env: Env): string {
-  return env.SESSION_SECRET || DEFAULT_SECRET;
+  if (!env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET is not configured for this environment');
+  }
+  return env.SESSION_SECRET;
 }
 
 function parseCookies(header: string): Record<string, string> {

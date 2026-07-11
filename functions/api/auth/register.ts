@@ -1,5 +1,5 @@
 import { success, badRequest, unauthorized, conflict } from '../_shared/response';
-import { hashPassword, createSessionToken, sessionCookie } from '../_shared/crypto';
+import { hashPassword, createSessionToken, sessionCookie, timingSafeEqual } from '../_shared/crypto';
 import { getSecret } from '../_shared/auth';
 import { generateId, now } from '../_shared/db';
 import { logAudit } from '../_shared/audit';
@@ -14,7 +14,11 @@ interface Env {
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const body = await request.json<Record<string, unknown>>();
 
-  if (!env.REGISTER_INVITE_CODE || body.inviteCode !== env.REGISTER_INVITE_CODE) {
+  if (
+    !env.REGISTER_INVITE_CODE ||
+    typeof body.inviteCode !== 'string' ||
+    !timingSafeEqual(body.inviteCode, env.REGISTER_INVITE_CODE)
+  ) {
     return unauthorized('Invalid invite code');
   }
   if (!isNonEmptyString(body.username)) return badRequest('Username is required');

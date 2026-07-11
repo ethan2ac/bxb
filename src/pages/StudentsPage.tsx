@@ -88,7 +88,7 @@ export function StudentsPage() {
     if (!deletingStudent || deleteConfirmText !== DELETE_CONFIRM_PHRASE) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/students/${deletingStudent.id}`);
+      await api.delete(`/api/students/${deletingStudent.id}`, { confirm: deleteConfirmText });
       addToast(`${displayName(deletingStudent)} permanently deleted`, 'success');
       setDeletingStudent(null);
       setDeleteConfirmText('');

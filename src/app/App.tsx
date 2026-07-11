@@ -9,6 +9,7 @@ import { AttendancePage } from '../pages/AttendancePage';
 import { StudentsPage } from '../pages/StudentsPage';
 import { StudentDetailPage } from '../pages/StudentDetailPage';
 import { WeeklyReportPage } from '../pages/WeeklyReportPage';
+import { AttendanceDetailPage } from '../pages/AttendanceDetailPage';
 import { NoShowsPage } from '../pages/NoShowsPage';
 import { SchedulePage } from '../pages/SchedulePage';
 import { EventAttendancePage } from '../pages/EventAttendancePage';
@@ -49,6 +50,7 @@ export function App() {
           <Route path="students" element={<StudentsPage />} />
           <Route path="students/:studentId" element={<StudentDetailPage />} />
           <Route path="reports/weekly" element={<WeeklyReportPage />} />
+          <Route path="reports/occurrence/:type/:id" element={<AttendanceDetailPage />} />
           <Route path="no-shows" element={<NoShowsPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="schedule/:eventId" element={<EventAttendancePage />} />

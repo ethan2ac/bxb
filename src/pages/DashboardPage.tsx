@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight, TrendingUp } from 'lucide-react';
+import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight, ChevronRight, TrendingUp } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
@@ -30,18 +30,17 @@ export function DashboardPage() {
   const [group, setGroup] = useState<GroupToggleValue>('ALL');
   const groupQs = group !== 'ALL' ? `group=${group}&` : '';
 
-  const { data: students, loading: loadingStudents } = useApi<Student[]>(`/api/students?${groupQs}`);
+  const { data: students, loading: loadingStudents } = useApi<Student[]>('/api/students');
   const { data: weeks, loading: loadingWeeks } = useApi<WeeklyReport[]>(`/api/reports/weekly?${groupQs}limit=4`);
   const { data: noShows, loading: loadingNoShows } = useApi<NoShowStudent[]>(`/api/no-shows?${groupQs}`);
   const { data: trend, loading: loadingTrend } = useApi<MonthlyTrend[]>(`/api/reports/monthly?${groupQs}months=6`);
 
   if (loadingStudents || loadingWeeks || loadingNoShows || loadingTrend) return <LoadingSpinner />;
 
-  const activeStudents = students?.length || 0;
+  const byCount = students?.filter((s) => s.group_name === 'BY').length || 0;
+  const jdyCount = students?.filter((s) => s.group_name === 'JDY').length || 0;
+  const allCount = byCount + jdyCount;
   const latestWeek = weeks?.[0];
-  const attendanceRate = latestWeek?.attendance_rate ?? 0;
-  const lateCount = latestWeek?.late ?? 0;
-  const excusedCount = latestWeek?.excused ?? 0;
   const noShowCount = noShows?.length || 0;
 
   const totalRecorded = latestWeek
@@ -63,22 +62,18 @@ export function DashboardPage() {
             <GroupToggle value={group} onChange={setGroup} />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+        <div className="grid grid-cols-3 gap-3 sm:flex sm:flex-wrap">
           <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Students</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{activeStudents}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">All Groups</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{allCount}</p>
           </div>
           <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-accent-yellow-text sm:text-3xl">{lateCount}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">BY</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{byCount}</p>
           </div>
           <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Excused</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-status-info sm:text-3xl">{excusedCount}</p>
-          </div>
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Rate</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-status-success sm:text-3xl">{attendanceRate}%</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">JDY</p>
+            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{jdyCount}</p>
           </div>
         </div>
       </div>
@@ -197,8 +192,9 @@ export function DashboardPage() {
         <div className="divide-y divide-ink-100">
           {weeks && weeks.length > 0 ? (
             weeks.map((week) => (
-              <div
+              <Link
                 key={week.occurrence_id}
+                to={`/reports/occurrence/${week.occurrence_type}/${week.occurrence_id}`}
                 className="flex items-center justify-between px-7 py-4 transition-colors hover:bg-ink-50/50"
               >
                 <div className="flex items-center gap-4">
@@ -224,8 +220,9 @@ export function DashboardPage() {
                   <span className="min-w-[3rem] text-right text-sm font-semibold text-ink-600">
                     {week.attendance_rate}%
                   </span>
+                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-ink-300" />
                 </div>
-              </div>
+              </Link>
             ))
           ) : (
             <div className="p-10 text-center text-sm text-ink-400">No sessions recorded yet</div>

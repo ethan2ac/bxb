@@ -147,6 +147,17 @@ export interface WeeklyReport {
   attendance_rate: number;
 }
 
+export interface UpcomingForecast {
+  id: string;
+  name: string;
+  event_date: string;
+  group_scope: GroupScope;
+  start_time: string;
+  enrolled: number;
+  expected: number;
+  excused: number;
+}
+
 export interface MonthlyTrend {
   month: string;
   present: number;

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Save, Search, Check, X as XIcon, CalendarOff } from 'lucide-react';
+import { Search, Check, X as XIcon, CalendarOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
@@ -111,7 +111,8 @@ export function ForecastPage() {
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [statusFilter, setStatusFilter] = useState<ForecastExpectation | 'all'>('all');
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showAllEvents, setShowAllEvents] = useState(false);
 
   const upcomingEvents = (events || [])
@@ -138,6 +139,7 @@ export function ForecastPage() {
   const load = useCallback(async () => {
     if (!eventId || !selectedEvent) return;
     setLoading(true);
+    setSaveStatus('idle');
     try {
       const [students, forecastData] = await Promise.all([
         api.get<Student[]>(`/api/events/${eventId}/roster`),
@@ -168,41 +170,61 @@ export function ForecastPage() {
 
   useEffect(() => {
     load();
+    // Switching events should never let a pending debounced save from the
+    // previous event's notes field land against the new one.
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
   }, [load]);
 
-  // Cycles each student through: not expected -> expected -> excused -> not expected
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
+
+  const persistRoster = useCallback(
+    async (entries: RosterEntry[]) => {
+      if (!eventId) return;
+      setSaveStatus('saving');
+      try {
+        const records: ForecastEntry[] = entries.map((entry) => ({
+          student_id: entry.student.id,
+          expected: entry.expected,
+          notes: entry.notes || null,
+        }));
+        await api.post('/api/forecasts/save', { event_id: eventId, records });
+        setSaveStatus('saved');
+      } catch (e) {
+        setSaveStatus('error');
+        addToast(e instanceof Error ? e.message : 'Failed to save forecast', 'error');
+      }
+    },
+    [eventId, addToast],
+  );
+
+  // Cycles each student through: not expected -> expected -> excused -> not expected,
+  // saving immediately since a click is already a deliberate, discrete action.
   const cycleExpected = (studentId: string) => {
-    setRoster((prev) =>
-      prev.map((entry) => {
+    setRoster((prev) => {
+      const next = prev.map((entry) => {
         if (entry.student.id !== studentId) return entry;
-        const next: ForecastExpectation =
+        const nextExpected: ForecastExpectation =
           entry.expected === 'no' ? 'yes' : entry.expected === 'yes' ? 'excused' : 'no';
-        return { ...entry, expected: next };
-      }),
-    );
+        return { ...entry, expected: nextExpected };
+      });
+      persistRoster(next);
+      return next;
+    });
   };
 
-  const saveForecast = async () => {
-    if (!eventId) return;
-    setSaving(true);
-    try {
-      const records: ForecastEntry[] = roster.map((entry) => ({
-        student_id: entry.student.id,
-        expected: entry.expected,
-        notes: entry.notes || null,
-      }));
-      await api.post('/api/forecasts/save', { event_id: eventId, records });
-      addToast('Forecast saved successfully', 'success');
-      await load();
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : 'Failed to save', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
+  // Notes are free text, so saves are debounced until typing pauses instead
+  // of firing on every keystroke.
   const handleNotesChange = (studentId: string, value: string) => {
-    setRoster((prev) => prev.map((r) => (r.student.id === studentId ? { ...r, notes: value } : r)));
+    setRoster((prev) => {
+      const next = prev.map((r) => (r.student.id === studentId ? { ...r, notes: value } : r));
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => persistRoster(next), 600);
+      return next;
+    });
   };
 
   const sortRoster = (entries: RosterEntry[]) =>
@@ -364,14 +386,21 @@ export function ForecastPage() {
                   />
                 </div>
               </div>
-              <button
-                onClick={saveForecast}
-                disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-pill bg-accent-charcoal px-6 py-3 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Forecast'}
-              </button>
+              <div className="flex items-center justify-center gap-2 rounded-pill border border-ink-100 bg-white px-6 py-3 text-sm font-medium text-ink-400 shadow-card">
+                {saveStatus === 'saving' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : saveStatus === 'error' ? (
+                  'Failed to save — retry by changing a value'
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-status-success" />
+                    {saveStatus === 'saved' ? 'All changes saved' : 'Changes save automatically'}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </>

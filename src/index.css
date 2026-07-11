@@ -10,6 +10,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.011em;
+    /* Proportional figures give "1" and "8" different widths, so any stat,
+       badge, or table column whose value changes digit count visibly shifts
+       its neighbors. Tabular figures give every digit the same width app-wide. */
+    font-variant-numeric: tabular-nums;
   }
 
   body {

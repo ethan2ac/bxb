@@ -77,6 +77,13 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   if (!student) return notFound('Student not found');
   if (student.active) return badRequest('Archive the student before permanently removing them');
 
+  // The frontend already gates this behind typing the phrase — enforcing it
+  // here too means a direct API call can't skip that safety check.
+  const body = await request.json<{ confirm?: string }>().catch(() => ({}) as { confirm?: string });
+  if (body.confirm !== 'ICONFIRM') {
+    return badRequest('Type ICONFIRM to permanently delete this student');
+  }
+
   await env.DB.batch([
     env.DB.prepare('DELETE FROM attendance_records WHERE student_id = ?').bind(studentId),
     env.DB.prepare('DELETE FROM event_attendance_records WHERE student_id = ?').bind(studentId),

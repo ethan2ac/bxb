@@ -29,15 +29,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const group = url.searchParams.get('group');
   const today = new Date().toISOString().split('T')[0];
 
-  const byCount = await env.DB.prepare(
-    "SELECT COUNT(*) as count FROM students WHERE active = 1 AND group_name = 'BY'",
-  ).first<{ count: number }>();
-  const jdyCount = await env.DB.prepare(
-    "SELECT COUNT(*) as count FROM students WHERE active = 1 AND group_name = 'JDY'",
-  ).first<{ count: number }>();
-  const byEnrolled = byCount?.count || 0;
-  const jdyEnrolled = jdyCount?.count || 0;
-
   // Exclude future-dated occurrences: nothing has happened yet, so they
   // should never outrank today as the "latest" occurrence under DATE DESC.
   const sessions = await env.DB.prepare(
@@ -67,9 +58,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       }
     }
 
-    const enrolled =
-      effectiveGroup === 'BY' ? byEnrolled : effectiveGroup === 'JDY' ? jdyEnrolled : byEnrolled + jdyEnrolled;
-
     const statsQuery = effectiveGroup
       ? `SELECT
            COUNT(*) as total,
@@ -97,6 +85,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const late = stats?.late || 0;
     const absent = stats?.absent || 0;
     const excused = stats?.excused || 0;
+
+    // "enrolled" is the actual roster size for THIS occurrence (records
+    // taken), not a live re-fetched group headcount — a separately computed
+    // headcount drifts from what really applied on that date (group
+    // membership changes over time, restricted-roster events, etc).
+    const enrolled = total;
 
     // Excused counts against the rate the same as absent (not excluded from
     // the denominator) so the rate/trend stays consistent with the raw
@@ -135,11 +129,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   for (const event of events.results || []) {
     const eventId = event.id as string;
-    const eventScope = event.group_scope as string;
-    const effectiveGroup = group || eventScope;
-    const enrolled =
-      effectiveGroup === 'BY' ? byEnrolled : effectiveGroup === 'JDY' ? jdyEnrolled : byEnrolled + jdyEnrolled;
-
     const statsQuery = group
       ? `SELECT
            COUNT(*) as total,
@@ -167,6 +156,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const late = stats?.late || 0;
     const absent = stats?.absent || 0;
     const excused = stats?.excused || 0;
+    const enrolled = total;
 
     weeks.push({
       occurrence_type: 'event',
