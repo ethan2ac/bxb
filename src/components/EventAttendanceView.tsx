@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Save } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Save, Lock } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from './LoadingSpinner';
 import { RosterPanel } from './RosterPanel';
 import { GroupSummaryTable } from './GroupSummaryTable';
 import { FilterPanel, type SortBy } from './FilterPanel';
-import { formatDate } from '../utils/dates';
+import { formatDate, getTodayDateString } from '../utils/dates';
 import { displayName, levelSortIndex } from '../utils/students';
 import type { Student, CalendarEvent, EventAttendanceRecord, EventAttendanceEntry, AttendanceStatus } from '../types';
 
@@ -161,6 +162,11 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
 
   if (loading || !event) return <LoadingSpinner />;
 
+  // Once an event's date has passed, this view becomes read-only — corrections
+  // go through the Amend action on the event's History page instead, which
+  // requires a reason and keeps an audit trail rather than a silent re-save.
+  const isPast = event.event_date < getTodayDateString();
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -168,15 +174,30 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
           <h2 className="text-2xl font-bold tracking-tight-lg text-ink-900">{event.name}</h2>
           <p className="mt-1 text-sm text-ink-400">{formatDate(event.event_date)}</p>
         </div>
-        <button
-          onClick={saveAttendance}
-          disabled={saving}
-          className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {saving ? 'Saving...' : 'Save'}
-        </button>
+        {!isPast && (
+          <button
+            onClick={saveAttendance}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        )}
       </div>
+
+      {isPast && (
+        <div className="flex items-center gap-3 rounded-card border border-ink-100 bg-ink-50 px-5 py-4 text-sm text-ink-600">
+          <Lock className="h-4 w-4 flex-shrink-0 text-ink-400" />
+          <span>
+            This event has already happened, so attendance here is locked.{' '}
+            <Link to={`/reports/occurrence/event/${event.id}`} className="font-medium text-ink-800 underline underline-offset-2">
+              Go to its History page
+            </Link>{' '}
+            to amend a student's record — amendments require a reason.
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Filter panel — shown above the roster on mobile for easy access,
@@ -203,9 +224,11 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
               className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
             />
           </div>
-          <p className="text-xs text-ink-400">
-            Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent.
-          </p>
+          {!isPast && (
+            <p className="text-xs text-ink-400">
+              Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent.
+            </p>
+          )}
 
           {isBoth ? (
             <div className="flex flex-col gap-5 md:flex-row">
@@ -214,6 +237,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
                 rows={byRoster}
                 onCycle={cycleStatus}
                 onNotesChange={handleNotesChange}
+                locked={isPast}
                 emptyMessage={search || statusFilter !== 'all' ? 'No BY students match' : 'No BY students in this event'}
               />
               <RosterPanel
@@ -221,6 +245,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
                 rows={jdyRoster}
                 onCycle={cycleStatus}
                 onNotesChange={handleNotesChange}
+                locked={isPast}
                 emptyMessage={search || statusFilter !== 'all' ? 'No JDY students match' : 'No JDY students in this event'}
               />
             </div>
@@ -229,6 +254,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
               rows={filteredRoster}
               onCycle={cycleStatus}
               onNotesChange={handleNotesChange}
+              locked={isPast}
               emptyMessage={search || statusFilter !== 'all' ? 'No students match' : "No students in this event's group"}
             />
           )}

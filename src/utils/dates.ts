@@ -6,6 +6,10 @@ export function getDefaultSessionDate(): string {
   return format(nextSunday(today), 'yyyy-MM-dd');
 }
 
+export function getTodayDateString(): string {
+  return format(new Date(), 'yyyy-MM-dd');
+}
+
 export function formatDate(dateStr: string): string {
   const d = parse(dateStr, 'yyyy-MM-dd', new Date());
   return format(d, 'MMM d, yyyy');

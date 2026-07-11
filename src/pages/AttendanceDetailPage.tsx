@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, UserCheck, Clock, CalendarClock, UserX } from 'lucide-react';
+import { ArrowLeft, Search, UserCheck, Clock, CalendarClock, UserX, Pencil } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
+import { api } from '../lib/api';
+import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
+import { Modal } from '../components/Modal';
 import { formatDate } from '../utils/dates';
 import type { Session, CalendarEvent, AttendanceRecord, EventAttendanceRecord, AttendanceStatus } from '../types';
 
@@ -33,15 +36,50 @@ function scopeLabel(scope: string): string {
   return scope;
 }
 
+const AMEND_STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
+  { value: 'present', label: 'Present' },
+  { value: 'late', label: 'Late' },
+  { value: 'excused', label: 'Excused' },
+  { value: 'absent', label: 'Absent' },
+];
+
 export function AttendanceDetailPage() {
   const { type, id } = useParams<{ type: OccurrenceType; id: string }>();
   const navigate = useNavigate();
+  const { addToast } = useUiStore();
   const isEvent = type === 'event';
   const url = id ? (isEvent ? `/api/event-attendance?eventId=${id}` : `/api/attendance?sessionId=${id}`) : null;
-  const { data, loading } = useApi<SessionResponse | EventResponse>(url);
+  const { data, loading, refetch } = useApi<SessionResponse | EventResponse>(url);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
+
+  const [amending, setAmending] = useState<DetailRecord | null>(null);
+  const [amendStatus, setAmendStatus] = useState<AttendanceStatus>('present');
+  const [amendReason, setAmendReason] = useState('');
+  const [submittingAmend, setSubmittingAmend] = useState(false);
+
+  const openAmend = (record: DetailRecord) => {
+    setAmending(record);
+    setAmendStatus(record.status);
+    setAmendReason('');
+  };
+
+  const submitAmend = async () => {
+    if (!amending || !amendReason.trim()) return;
+    setSubmittingAmend(true);
+    try {
+      const endpoint = isEvent ? `/api/event-attendance/${amending.id}` : `/api/attendance/${amending.id}`;
+      await api.put(endpoint, { status: amendStatus, reason: amendReason.trim() });
+      addToast('Attendance amended', 'success');
+      setAmending(null);
+      await refetch();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : 'Failed to amend attendance', 'error');
+    } finally {
+      setSubmittingAmend(false);
+    }
+  };
 
   const occurrence = isEvent ? (data as EventResponse | null)?.event : (data as SessionResponse | null)?.session;
   const records: DetailRecord[] = data?.records ?? [];
@@ -190,14 +228,81 @@ export function AttendanceDetailPage() {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink-700">{record.student_name}</p>
-                  {record.notes && <p className="mt-0.5 truncate text-xs text-ink-400">{record.notes}</p>}
+                  {record.notes && <p className="mt-0.5 whitespace-pre-line text-xs text-ink-400">{record.notes}</p>}
                 </div>
-                <Badge variant={record.status}>{record.status}</Badge>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <Badge variant={record.status}>{record.status}</Badge>
+                  <button
+                    onClick={() => openAmend(record)}
+                    className="flex items-center gap-1 rounded-pill border border-ink-200 px-2.5 py-1 text-xs font-medium text-ink-500 transition-colors hover:border-ink-300 hover:text-ink-700"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Amend
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      <Modal open={!!amending} onClose={() => !submittingAmend && setAmending(null)} title="Amend Attendance">
+        {amending && (
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm font-medium text-ink-700">{amending.student_name}</p>
+              <p className="mt-0.5 text-xs text-ink-400">Currently marked as {amending.status}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ink-600">New status</label>
+              <select
+                value={amendStatus}
+                onChange={(e) => setAmendStatus(e.target.value as AttendanceStatus)}
+                className="mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+              >
+                {AMEND_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ink-600">
+                Reason for amendment <span className="font-normal text-ink-300">(required)</span>
+              </label>
+              <textarea
+                value={amendReason}
+                onChange={(e) => setAmendReason(e.target.value)}
+                rows={3}
+                placeholder="Why is this attendance record being changed?"
+                className="mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+              />
+              <p className="mt-1.5 text-xs text-ink-400">
+                This is recorded permanently on the attendance record and in the audit log.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setAmending(null)}
+                disabled={submittingAmend}
+                className="rounded-pill border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitAmend}
+                disabled={submittingAmend || !amendReason.trim()}
+                className="rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
+              >
+                {submittingAmend ? 'Saving...' : 'Save Amendment'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

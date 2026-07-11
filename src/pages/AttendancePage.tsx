@@ -5,11 +5,12 @@ import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { EventAttendanceView } from '../components/EventAttendanceView';
-import { getDefaultSessionDate, formatDate } from '../utils/dates';
+import { getDefaultSessionDate, getTodayDateString, formatDate } from '../utils/dates';
 import type { CalendarEvent } from '../types';
 
 export function AttendancePage() {
   const { addToast } = useUiStore();
+  const today = getTodayDateString();
   const [sessionDate, setSessionDate] = useState(getDefaultSessionDate);
   const [dayEvents, setDayEvents] = useState<CalendarEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -37,6 +38,12 @@ export function AttendancePage() {
   }, [loadDayEvents]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // The take-attendance flow is for today/upcoming events only — past
+    // events are locked here (see EventAttendanceView) and can only be
+    // corrected via the Amend action on their History page, which requires
+    // a reason. min= blocks this in the native picker; this guard covers
+    // browsers/inputs that don't enforce it (e.g. typed/pasted values).
+    if (e.target.value < today) return;
     setSessionDate(e.target.value);
   };
 
@@ -55,6 +62,7 @@ export function AttendancePage() {
           <input
             type="date"
             value={sessionDate}
+            min={today}
             onChange={handleDateChange}
             className="rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-700 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
           />

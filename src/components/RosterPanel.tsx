@@ -17,9 +17,10 @@ interface RosterPanelProps {
   onCycle: (studentId: string) => void;
   onNotesChange: (studentId: string, value: string) => void;
   emptyMessage?: string;
+  locked?: boolean;
 }
 
-export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage = 'No students match' }: RosterPanelProps) {
+export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage = 'No students match', locked = false }: RosterPanelProps) {
   return (
     <div className="min-w-0 flex-1 space-y-3">
       {title && (
@@ -46,7 +47,10 @@ export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage 
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => onCycle(entry.student.id)}
+                        disabled={locked}
                         className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${
+                          locked ? 'cursor-not-allowed opacity-60' : ''
+                        } ${
                           entry.status === 'present'
                             ? 'bg-status-success text-white shadow-sm'
                             : entry.status === 'late'
@@ -94,8 +98,9 @@ export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage 
                       type="text"
                       value={entry.notes}
                       onChange={(e) => onNotesChange(entry.student.id, e.target.value)}
+                      readOnly={locked}
                       placeholder={entry.status === 'excused' ? 'Reason for excused (optional)' : 'Reason for absence (optional)'}
-                      className="mt-3 w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-3 py-1.5 text-xs text-ink-700 placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+                      className="mt-3 w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-3 py-1.5 text-xs text-ink-700 placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400 disabled:opacity-60"
                     />
                   )}
                 </div>

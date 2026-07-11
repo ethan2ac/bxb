@@ -32,9 +32,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?')
     .bind(body.event_id)
-    .first<{ id: string; start_time: string; late_threshold_minutes: number }>();
+    .first<{ id: string; event_date: string; start_time: string; late_threshold_minutes: number }>();
 
   if (!event) return badRequest('Event not found');
+
+  // The day-of attendance flow only ever writes today's (or a future) event —
+  // once an event's date has passed, this bulk endpoint refuses the write so
+  // a stray re-save can't silently clobber finalized history. Corrections to
+  // a past event go through the single-record amend endpoint instead, which
+  // requires a reason and leaves an audit trail.
+  const today = new Date().toISOString().split('T')[0];
+  if (event.event_date < today) {
+    return badRequest('This event has already happened. Use Amend on its History page to make changes.');
+  }
 
   const timestamp = now();
   const statements: D1PreparedStatement[] = [];
