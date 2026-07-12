@@ -45,6 +45,16 @@ function computeLiveStatus(checkInIso: string, event: CalendarEvent): 'present' 
   return new Date(checkInIso) > threshold ? 'late' : 'present';
 }
 
+// A "said yes but not here" flag is only meaningful once the class has
+// actually begun — before start time, no-show is just wrong.
+function hasEventStarted(event: CalendarEvent, atTime: number): boolean {
+  const [h, m] = event.start_time.split(':').map(Number);
+  const start = new Date(
+    `${event.event_date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000+08:00`,
+  );
+  return atTime >= start.getTime();
+}
+
 // Per-event attendance-taking UI, shared between the main Attendance nav page
 // (which picks an event via date + dropdown) and the Schedule-page deep link
 // into a specific event — each renders attendance independently, never
@@ -60,7 +70,15 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   const [loading, setLoading] = useState(false);
   const [lateThresholdDraft, setLateThresholdDraft] = useState('');
   const [savingThreshold, setSavingThreshold] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const notesSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Ticks the clock so the no-show flag can turn itself on the moment the
+  // event's start time passes, without needing a tap or a page reload.
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -255,12 +273,18 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
 
   // Students who told us on the Forecast page they were coming ("yes") but
   // aren't showing as here — the mismatch this view is meant to surface at a
-  // glance, distinct from a plain unexplained absence.
-  const noShowIds = new Set(
-    roster
-      .filter((entry) => forecastByStudent.get(entry.student.id) === 'yes' && entry.status !== 'present' && entry.status !== 'late')
-      .map((entry) => entry.student.id),
-  );
+  // glance, distinct from a plain unexplained absence. Held back until the
+  // event's start time actually passes (checking in early doesn't make
+  // everyone else a no-show yet), and clears the instant a tap marks someone
+  // present/late since noShowIds is recomputed from live roster state.
+  const noShowIds =
+    event && hasEventStarted(event, nowMs)
+      ? new Set(
+          roster
+            .filter((entry) => forecastByStudent.get(entry.student.id) === 'yes' && entry.status !== 'present' && entry.status !== 'late')
+            .map((entry) => entry.student.id),
+        )
+      : new Set<string>();
 
   const groupForecastStats = (entries: RosterEntry[]) => {
     let expected = 0;
