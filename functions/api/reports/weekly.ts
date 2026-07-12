@@ -32,8 +32,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   // Exclude future-dated occurrences: nothing has happened yet, so they
   // should never outrank today as the "latest" occurrence under DATE DESC.
+  // Also exclude sessions that never had attendance taken — without this,
+  // a leftover legacy Sunday session with zero records shows up as a phantom
+  // duplicate alongside a same-day event (matches the exclusion already
+  // applied to the events query below).
   const sessions = await env.DB.prepare(
-    'SELECT * FROM sessions WHERE session_date <= ? ORDER BY session_date DESC LIMIT ?',
+    `SELECT * FROM sessions
+     WHERE session_date <= ?
+       AND EXISTS (SELECT 1 FROM attendance_records WHERE session_id = sessions.id)
+     ORDER BY session_date DESC LIMIT ?`,
   )
     .bind(today, limit)
     .all();
