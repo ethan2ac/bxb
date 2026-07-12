@@ -243,11 +243,8 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   const jdyRoster = filteredRoster.filter((e) => e.student.group_name === 'JDY');
 
   const groupStats = (entries: RosterEntry[]) => {
-    const late = entries.filter((e) => e.status === 'late').length;
-    const attended = entries.filter((e) => e.status === 'present' || e.status === 'late').length;
-    const excused = entries.filter((e) => e.status === 'excused').length;
-    const absent = entries.filter((e) => e.status === 'absent').length;
-    return { present: attended - late, late, excused, absent, total: entries.length };
+    const here = entries.filter((e) => e.status === 'present' || e.status === 'late').length;
+    return { here, notHere: entries.length - here, total: entries.length };
   };
   const byStats = groupStats(roster.filter((e) => e.student.group_name === 'BY'));
   const jdyStats = groupStats(roster.filter((e) => e.student.group_name === 'JDY'));
@@ -414,30 +411,19 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
               <GroupSummaryTable
                 groupLabels={groupLabels}
                 rows={[
-                  { key: 'enrolled', label: 'Enrolled', values: summaryStats.map((s) => s.total) },
+                  { key: 'total', label: 'Total Students', values: summaryStats.map((s) => s.total) },
                   {
-                    key: 'present',
-                    label: 'Present',
+                    key: 'here',
+                    label: 'Here',
                     dotClassName: 'bg-status-success',
-                    values: summaryStats.map((s) => s.present),
+                    emphasize: true,
+                    values: summaryStats.map((s) => s.here),
                   },
                   {
-                    key: 'late',
-                    label: 'Late',
-                    dotClassName: 'bg-accent-yellow',
-                    values: summaryStats.map((s) => s.late),
-                  },
-                  {
-                    key: 'excused',
-                    label: 'Excused',
-                    dotClassName: 'bg-status-info',
-                    values: summaryStats.map((s) => s.excused),
-                  },
-                  {
-                    key: 'absent',
-                    label: 'Absent',
+                    key: 'not-here',
+                    label: 'Not Here',
                     dotClassName: 'bg-status-danger/60',
-                    values: summaryStats.map((s) => s.absent),
+                    values: summaryStats.map((s) => s.notHere),
                   },
                 ]}
               />
