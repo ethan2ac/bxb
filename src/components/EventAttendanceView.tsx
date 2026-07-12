@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Save, Lock } from 'lucide-react';
+import { Search, Lock } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -13,7 +13,6 @@ import type {
   Student,
   CalendarEvent,
   EventAttendanceRecord,
-  EventAttendanceEntry,
   AttendanceStatus,
   Forecast,
 } from '../types';
@@ -59,9 +58,9 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   const [sortBy, setSortBy] = useState<SortBy>('level');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [lateThresholdDraft, setLateThresholdDraft] = useState('');
   const [savingThreshold, setSavingThreshold] = useState(false);
+  const notesSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -104,9 +103,46 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
     load();
   }, [load]);
 
+  // Unmount cleanup only — in-flight debounced notes saves are intentionally
+  // left to fire even after navigating away, since the timeout closure holds
+  // its own entry snapshot and the request is harmless once it lands.
+  useEffect(() => {
+    const timers = notesSaveTimers.current;
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, []);
+
+  // Persists a single student's record immediately, independent of every
+  // other row. This is what makes concurrent edits from different admins
+  // safe: each save only touches the one record being changed rather than
+  // re-upserting a full, possibly-stale roster snapshot over everyone else's
+  // in-flight updates.
+  const persistEntry = useCallback(
+    async (entry: RosterEntry) => {
+      if (!event) return;
+      try {
+        await api.post('/api/event-attendance/save', {
+          event_id: event.id,
+          records: [
+            {
+              student_id: entry.student.id,
+              status: entry.status,
+              check_in_timestamp: entry.check_in_timestamp,
+              notes: entry.notes || null,
+            },
+          ],
+        });
+      } catch (e) {
+        addToast(e instanceof Error ? e.message : `Failed to save attendance for ${displayName(entry.student)}`, 'error');
+      }
+    },
+    [event, addToast],
+  );
+
   const cycleStatus = (studentId: string) => {
-    setRoster((prev) =>
-      prev.map((entry) => {
+    setRoster((prev) => {
+      const next = prev.map((entry): RosterEntry => {
         if (entry.student.id !== studentId) return entry;
 
         if (entry.status === 'absent') {
@@ -120,8 +156,12 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
         }
 
         return { ...entry, status: 'absent', check_in_timestamp: null };
-      }),
-    );
+      });
+
+      const updated = next.find((entry) => entry.student.id === studentId);
+      if (updated) persistEntry(updated);
+      return next;
+    });
   };
 
   const saveLateThreshold = async () => {
@@ -162,28 +202,26 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
     }
   };
 
-  const saveAttendance = async () => {
-    if (!event) return;
-    setSaving(true);
-    try {
-      const records: EventAttendanceEntry[] = roster.map((entry) => ({
-        student_id: entry.student.id,
-        status: entry.status,
-        check_in_timestamp: entry.check_in_timestamp,
-        notes: entry.notes || null,
-      }));
-      await api.post('/api/event-attendance/save', { event_id: event.id, records });
-      addToast('Attendance saved successfully', 'success');
-      await load();
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : 'Failed to save', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleNotesChange = (studentId: string, value: string) => {
-    setRoster((prev) => prev.map((r) => (r.student.id === studentId ? { ...r, notes: value } : r)));
+    setRoster((prev) => {
+      const next = prev.map((r) => (r.student.id === studentId ? { ...r, notes: value } : r));
+
+      // Debounced so we don't fire a request per keystroke — resets on every
+      // change and only saves once typing pauses.
+      const timers = notesSaveTimers.current;
+      const existingTimer = timers.get(studentId);
+      if (existingTimer) clearTimeout(existingTimer);
+      timers.set(
+        studentId,
+        setTimeout(() => {
+          timers.delete(studentId);
+          const updated = next.find((entry) => entry.student.id === studentId);
+          if (updated) persistEntry(updated);
+        }, 600),
+      );
+
+      return next;
+    });
   };
 
   const sortRoster = (entries: RosterEntry[]) =>
@@ -251,16 +289,6 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
           <h2 className="text-2xl font-bold tracking-tight-lg text-ink-900">{event.name}</h2>
           <p className="mt-1 text-sm text-ink-400">{formatDate(event.event_date)}</p>
         </div>
-        {!isPast && (
-          <button
-            onClick={saveAttendance}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        )}
       </div>
 
       {isPast && (
@@ -303,7 +331,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
           </div>
           {!isPast && (
             <p className="text-xs text-ink-400">
-              Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent.
+              Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent. Changes save automatically.
             </p>
           )}
 
