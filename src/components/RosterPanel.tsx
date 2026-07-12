@@ -1,4 +1,4 @@
-import { Check, X as XIcon, Clock, CalendarOff } from 'lucide-react';
+import { Check, X as XIcon, Clock, CalendarOff, AlertTriangle } from 'lucide-react';
 import { Badge } from './Badge';
 import { displayName } from '../utils/students';
 import { formatTime } from '../utils/dates';
@@ -18,9 +18,21 @@ interface RosterPanelProps {
   onNotesChange: (studentId: string, value: string) => void;
   emptyMessage?: string;
   locked?: boolean;
+  // Student IDs to call out as "said yes on the forecast, not here" —
+  // rendered with a distinct red treatment so it reads at a glance,
+  // separate from the routine present/late/excused/absent badges.
+  flaggedIds?: Set<string>;
 }
 
-export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage = 'No students match', locked = false }: RosterPanelProps) {
+export function RosterPanel({
+  title,
+  rows,
+  onCycle,
+  onNotesChange,
+  emptyMessage = 'No students match',
+  locked = false,
+  flaggedIds,
+}: RosterPanelProps) {
   return (
     <div className="min-w-0 flex-1 space-y-3">
       {title && (
@@ -36,11 +48,16 @@ export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage 
           <div className="divide-y divide-ink-100">
             {rows.map((entry) => {
               const needsReason = entry.status === 'absent' || entry.status === 'excused';
+              const isFlagged = flaggedIds?.has(entry.student.id) ?? false;
               return (
                 <div
                   key={entry.student.id}
                   className={`px-6 py-4 transition-colors ${
-                    entry.status === 'late' ? 'bg-accent-yellow-soft' : 'hover:bg-ink-50/50'
+                    isFlagged
+                      ? 'bg-status-danger-soft'
+                      : entry.status === 'late'
+                        ? 'bg-accent-yellow-soft'
+                        : 'hover:bg-ink-50/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -70,7 +87,11 @@ export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage 
                         )}
                       </button>
                       <div>
-                        <p className={`text-sm font-medium ${entry.status === 'late' ? 'text-accent-yellow-text' : 'text-ink-800'}`}>
+                        <p
+                          className={`text-sm font-medium ${
+                            isFlagged ? 'text-status-danger' : entry.status === 'late' ? 'text-accent-yellow-text' : 'text-ink-800'
+                          }`}
+                        >
                           {displayName(entry.student)}
                         </p>
                         <div className="mt-0.5 flex items-center gap-2">
@@ -79,6 +100,12 @@ export function RosterPanel({ title, rows, onCycle, onNotesChange, emptyMessage 
                             <span className="text-xs text-ink-400">Checked in {formatTime(entry.check_in_timestamp)}</span>
                           )}
                         </div>
+                        {isFlagged && (
+                          <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-status-danger">
+                            <AlertTriangle className="h-3 w-3" />
+                            Said yes on Forecast — no-show
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

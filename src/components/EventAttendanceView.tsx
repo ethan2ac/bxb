@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Lock } from 'lucide-react';
+import { Search, Lock, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -252,6 +252,16 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   const summaryStats = isBoth ? [byStats, jdyStats] : event?.group_scope === 'JDY' ? [jdyStats] : [byStats];
 
   const forecastByStudent = new Map(forecasts.map((f) => [f.student_id, f.expected]));
+
+  // Students who told us on the Forecast page they were coming ("yes") but
+  // aren't showing as here — the mismatch this view is meant to surface at a
+  // glance, distinct from a plain unexplained absence.
+  const noShowIds = new Set(
+    roster
+      .filter((entry) => forecastByStudent.get(entry.student.id) === 'yes' && entry.status !== 'present' && entry.status !== 'late')
+      .map((entry) => entry.student.id),
+  );
+
   const groupForecastStats = (entries: RosterEntry[]) => {
     let expected = 0;
     let notExpected = 0;
@@ -331,6 +341,13 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
               Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent. Changes save automatically.
             </p>
           )}
+          {noShowIds.size > 0 && (
+            <p className="flex items-center gap-1.5 text-xs font-medium text-status-danger">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {noShowIds.size} {noShowIds.size === 1 ? 'student' : 'students'} said yes on the Forecast but{' '}
+              {noShowIds.size === 1 ? "hasn't" : "haven't"} shown up — highlighted in red below.
+            </p>
+          )}
 
           {isBoth ? (
             <div className="flex flex-col gap-5 md:flex-row">
@@ -340,6 +357,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
                 onCycle={cycleStatus}
                 onNotesChange={handleNotesChange}
                 locked={isPast}
+                flaggedIds={noShowIds}
                 emptyMessage={search || statusFilter !== 'all' ? 'No BY students match' : 'No BY students in this event'}
               />
               <RosterPanel
@@ -348,6 +366,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
                 onCycle={cycleStatus}
                 onNotesChange={handleNotesChange}
                 locked={isPast}
+                flaggedIds={noShowIds}
                 emptyMessage={search || statusFilter !== 'all' ? 'No JDY students match' : 'No JDY students in this event'}
               />
             </div>
@@ -357,6 +376,7 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
               onCycle={cycleStatus}
               onNotesChange={handleNotesChange}
               locked={isPast}
+              flaggedIds={noShowIds}
               emptyMessage={search || statusFilter !== 'all' ? 'No students match' : "No students in this event's group"}
             />
           )}
