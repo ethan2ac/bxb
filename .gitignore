@@ -16,6 +16,11 @@
 dist/
 .dev.vars
 
+# Real student PII / credentials — local-dev-only, never committed
+# (purged from git history; regenerate locally if needed)
+sql/seed.sql
+sql/import-2026-history.sql
+
 # Temp files
 cookies.txt
 
