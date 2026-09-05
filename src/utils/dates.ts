@@ -1,11 +1,5 @@
 import { format, nextSunday, isSunday, parse, addMinutes } from 'date-fns';
 
-export function getDefaultSessionDate(): string {
-  const today = new Date();
-  if (isSunday(today)) return format(today, 'yyyy-MM-dd');
-  return format(nextSunday(today), 'yyyy-MM-dd');
-}
-
 export function getTodayDateString(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }

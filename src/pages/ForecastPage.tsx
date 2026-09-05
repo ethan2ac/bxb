@@ -6,6 +6,7 @@ import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { EventPicker } from '../components/EventPicker';
 import { GroupSummaryTable } from '../components/GroupSummaryTable';
 import { FilterPanel, type SortBy } from '../components/FilterPanel';
 import { formatDate, getTodayDateString } from '../utils/dates';
@@ -105,7 +106,7 @@ export function ForecastPage() {
   const { eventId: routeEventId } = useParams<{ eventId?: string }>();
   const { addToast } = useUiStore();
   const { data: events, loading: loadingEvents } = useApi<CalendarEvent[]>('/api/events?limit=100');
-  const [eventId, setEventId] = useState(routeEventId || '');
+  const [manualEventId, setManualEventId] = useState(routeEventId || '');
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('level');
@@ -113,28 +114,20 @@ export function ForecastPage() {
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showAllEvents, setShowAllEvents] = useState(false);
 
   const upcomingEvents = (events || [])
     .filter((e) => e.event_date >= getTodayDateString())
     .sort((a, b) => a.event_date.localeCompare(b.event_date) || a.start_time.localeCompare(b.start_time));
 
+  // Defaults to the soonest upcoming event when nothing's been picked yet
+  // (and no deep link named one) — matches Attendance's picker so opening
+  // Forecast fresh lands on a roster instead of an empty picker.
+  const eventId = manualEventId || upcomingEvents[0]?.id || '';
   const selectedEvent = events?.find((e) => e.id === eventId) || null;
-  const dropdownEvents =
+  const pickerEvents =
     selectedEvent && !upcomingEvents.some((e) => e.id === selectedEvent.id)
       ? [selectedEvent, ...upcomingEvents]
       : upcomingEvents;
-  const EVENT_DROPDOWN_LIMIT = 6;
-  const visibleEvents = showAllEvents ? dropdownEvents : dropdownEvents.slice(0, EVENT_DROPDOWN_LIMIT);
-  const hasMoreEvents = !showAllEvents && dropdownEvents.length > EVENT_DROPDOWN_LIMIT;
-
-  const handleEventSelect = (value: string) => {
-    if (value === '__more__') {
-      setShowAllEvents(true);
-      return;
-    }
-    setEventId(value);
-  };
 
   const load = useCallback(async () => {
     if (!eventId || !selectedEvent) return;
@@ -262,30 +255,19 @@ export function ForecastPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Forecast</h1>
-        <p className="mt-2 text-base text-ink-400">Plan expected attendance ahead of an event</p>
+        <p className="mt-2 text-base text-ink-400">
+          {selectedEvent ? formatDate(selectedEvent.event_date) : 'Plan expected attendance ahead of an event'}
+        </p>
       </div>
 
-      <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
-        <label className="block text-xs font-medium uppercase tracking-wider text-ink-400">Event</label>
-        <select
-          value={eventId}
-          onChange={(e) => handleEventSelect(e.target.value)}
-          className="mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-2.5 text-sm text-ink-800 shadow-sm focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
-        >
-          <option value="">Select an upcoming event...</option>
-          {visibleEvents.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name} &mdash; {formatDate(e.event_date)}
-            </option>
-          ))}
-          {hasMoreEvents && <option value="__more__">Show more events&hellip;</option>}
-        </select>
-      </div>
+      {pickerEvents.length > 0 && (
+        <EventPicker events={pickerEvents} selectedId={eventId || null} onSelect={setManualEventId} />
+      )}
 
       {!eventId && (
         <EmptyState
-          title="Select an event"
-          description="Choose an upcoming event above to forecast expected attendance"
+          title="No upcoming events"
+          description="Schedule an event to start forecasting expected attendance"
         />
       )}
 
