@@ -18,14 +18,28 @@ import { useState, useRef, useEffect } from 'react';
 import { ToastContainer } from './Toast';
 import { useAuthStore } from '../store/auth';
 
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/schedule', label: 'Schedule', icon: CalendarPlus },
-  { to: '/forecast', label: 'Forecast', icon: TrendingUp },
-  { to: '/attendance', label: 'Attendance', icon: ClipboardCheck },
-  { to: '/students', label: 'Students', icon: Users },
-  { to: '/reports/weekly', label: 'History', icon: History },
-  { to: '/no-shows', label: 'No Shows', icon: UserX },
+// Grouped by task, not alphabetically or by when the feature shipped:
+// Attendance leads its group since taking attendance is the single highest-
+// frequency, most time-pressured action in the app (live, every session) —
+// it previously sat 4th, behind two lower-frequency planning pages. Schedule
+// and Forecast are the "before the session" prep work for that same task.
+// Students is its own group (roster upkeep, not a per-session action).
+// History and No Shows are retrospective/analysis, reviewed after the fact.
+const navGroups = [
+  {
+    items: [
+      { to: '/attendance', label: 'Attendance', icon: ClipboardCheck },
+      { to: '/schedule', label: 'Schedule', icon: CalendarPlus },
+      { to: '/forecast', label: 'Forecast', icon: TrendingUp },
+    ],
+  },
+  { items: [{ to: '/students', label: 'Students', icon: Users }] },
+  {
+    items: [
+      { to: '/reports/weekly', label: 'History', icon: History },
+      { to: '/no-shows', label: 'No Shows', icon: UserX },
+    ],
+  },
 ];
 
 export function Layout() {
@@ -56,11 +70,9 @@ export function Layout() {
         {/* Top navigation */}
         <header className="relative z-10 flex items-center justify-between px-6 py-5 md:px-10 md:py-6">
           {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-charcoal text-sm font-bold text-white shadow-pill">
-              P
-            </div>
-            <span className="text-base font-semibold text-ink-800">PYB</span>
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 flex-none bg-accent-charcoal" />
+            <span className="font-display text-xl tracking-tight text-ink-900">PYB</span>
           </div>
 
           {/* Desktop nav — only from xl: up (1280px). 7 items + brand + right actions need
@@ -68,22 +80,38 @@ export function Layout() {
               entirely behind the shell's overflow-hidden. Anything narrower uses the
               hamburger menu instead. */}
           <nav className="hidden items-center gap-1 rounded-pill bg-ink-100/60 p-1.5 xl:flex">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 rounded-pill px-4 py-2 text-[13px] font-medium transition-all ${
-                    isActive
-                      ? 'bg-accent-charcoal text-white shadow-pill'
-                      : 'text-ink-500 hover:text-ink-700'
-                  }`
-                }
-              >
-                <item.icon className="h-3.5 w-3.5" />
-                {item.label}
-              </NavLink>
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                `flex items-center gap-1.5 rounded-pill px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.1em] transition-all ${
+                  isActive ? 'bg-accent-charcoal text-white shadow-pill' : 'text-ink-500 hover:text-ink-700'
+                }`
+              }
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Dashboard
+            </NavLink>
+            {navGroups.map((group, gi) => (
+              <div key={gi} className="flex items-center gap-1">
+                <span className="mx-1 h-4 w-px bg-ink-300" aria-hidden="true" />
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `flex items-center gap-1.5 rounded-pill px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.1em] transition-all ${
+                        isActive
+                          ? 'bg-accent-charcoal text-white shadow-pill'
+                          : 'text-ink-500 hover:text-ink-700'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-3.5 w-3.5" />
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
 
@@ -156,34 +184,43 @@ export function Layout() {
           <div className="relative z-20 border-b border-ink-100 bg-shell-surface px-6 pb-4 xl:hidden">
             <nav className="flex flex-col gap-1">
               {[
-                ...navItems,
-                ...(isOwner ? [{ to: '/admin/users', label: 'Manage Users', icon: ShieldCheck }] : []),
-                { to: '/settings', label: 'Settings', icon: Settings },
-              ].map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={'end' in item ? item.end : false}
-                  onClick={() => setMobileNavOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 rounded-card-sm px-4 py-2.5 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-accent-charcoal text-white'
-                        : 'text-ink-500 hover:bg-ink-100 hover:text-ink-700'
-                    }`
-                  }
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </NavLink>
+                [{ to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true }],
+                ...navGroups.map((g) => g.items),
+                [
+                  ...(isOwner ? [{ to: '/admin/users', label: 'Manage Users', icon: ShieldCheck }] : []),
+                  { to: '/settings', label: 'Settings', icon: Settings },
+                ],
+              ].map((section, si) => (
+                <div key={si} className={si > 0 ? 'mt-1.5 border-t border-ink-100 pt-1.5' : ''}>
+                  {section.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={'end' in item ? item.end : false}
+                      onClick={() => setMobileNavOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2.5 rounded-card-sm px-4 py-2.5 text-sm font-medium transition-colors ${
+                          isActive
+                            ? 'bg-accent-charcoal text-white'
+                            : 'text-ink-500 hover:bg-ink-100 hover:text-ink-700'
+                        }`
+                      }
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
               ))}
-              <button
-                onClick={() => { setMobileNavOpen(false); logout(); }}
-                className="flex items-center gap-2.5 rounded-card-sm px-4 py-2.5 text-sm font-medium text-ink-500 hover:bg-ink-100"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
+              <div className="mt-1.5 border-t border-ink-100 pt-1.5">
+                <button
+                  onClick={() => { setMobileNavOpen(false); logout(); }}
+                  className="flex w-full items-center gap-2.5 rounded-card-sm px-4 py-2.5 text-sm font-medium text-ink-500 hover:bg-ink-100"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
             </nav>
           </div>
         )}

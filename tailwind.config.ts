@@ -6,6 +6,12 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        // Bold condensed display face for big numbers/headlines — reserved for
+        // moments that should read as a statement, not body copy.
+        display: ['Anton', 'Inter', 'sans-serif'],
+        // Uppercase micro-labels/metadata use mono so they read as "data",
+        // visually distinct from prose set in Inter.
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {
         shell: {

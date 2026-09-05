@@ -5,6 +5,7 @@ import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight, ChevronRight, T
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
+import { StatStrip } from '../components/StatStrip';
 import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
 import type { Student, WeeklyReport, NoShowStudent, MonthlyTrend } from '../types';
@@ -50,33 +51,26 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">
-            Dashboard
-          </h1>
-          <p className="mt-2 text-base text-ink-400">
+      <div>
+        <span className="eyebrow">01 — Overview</span>
+        <h1 className="mt-3 font-display text-5xl leading-[0.95] tracking-tight text-ink-900 md:text-6xl">
+          Dashboard
+        </h1>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-base text-ink-400">
             Sunday attendance overview &mdash; everything at a glance.
           </p>
-          <div className="mt-4">
-            <GroupToggle value={group} onChange={setGroup} />
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-3 sm:flex sm:flex-wrap">
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">All Groups</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{allCount}</p>
-          </div>
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">BY</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{byCount}</p>
-          </div>
-          <div className="rounded-card border border-ink-100 bg-white px-4 py-3 shadow-card sm:px-6 sm:py-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-ink-400">JDY</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{jdyCount}</p>
-          </div>
+          <GroupToggle value={group} onChange={setGroup} />
         </div>
       </div>
+
+      <StatStrip
+        cells={[
+          { key: 'all', label: 'All Groups', value: allCount, accent: true },
+          { key: 'by', label: 'BY', value: byCount },
+          { key: 'jdy', label: 'JDY', value: jdyCount },
+        ]}
+      />
 
       {/* Progress strip */}
       {latestWeek && (
@@ -123,9 +117,26 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Three-column cards */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        {/* Quick actions */}
+      {/* Quick actions — ordered to match how the week actually flows: forecast
+          who's coming, then take attendance live, manage the roster as needed,
+          review no-shows after the fact. */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <Link
+          to="/forecast"
+          className="group flex flex-col justify-between rounded-card border border-ink-100 bg-white p-7 shadow-card transition-all hover:shadow-card-hover"
+        >
+          <div>
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-yellow-soft text-accent-yellow-text">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-ink-800">Forecast</h3>
+            <p className="mt-1 text-sm text-ink-400">See who's expected this week</p>
+          </div>
+          <div className="mt-5 flex items-center text-sm font-medium text-ink-400 transition-colors group-hover:text-ink-700">
+            Open <ArrowRight className="ml-1 h-4 w-4" />
+          </div>
+        </Link>
+
         <Link
           to="/attendance"
           className="group flex flex-col justify-between rounded-card border border-ink-100 bg-white p-7 shadow-card transition-all hover:shadow-card-hover"
