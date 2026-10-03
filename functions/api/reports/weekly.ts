@@ -8,7 +8,7 @@ interface Env {
 }
 
 interface WeeklyRow {
-  occurrence_type: 'session' | 'event';
+  occurrence_type: 'event';
   occurrence_id: string;
   occurrence_date: string;
   occurrence_name: string | null;
@@ -30,93 +30,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const group = url.searchParams.get('group');
   const today = getOrgTodayDate();
 
-  // Exclude future-dated occurrences: nothing has happened yet, so they
+  // Future-dated events are excluded: nothing has happened yet, so they
   // should never outrank today as the "latest" occurrence under DATE DESC.
-  // Also exclude sessions that never had attendance taken — without this,
-  // a leftover legacy Sunday session with zero records shows up as a phantom
-  // duplicate alongside a same-day event (matches the exclusion already
-  // applied to the events query below).
-  const sessions = await env.DB.prepare(
-    `SELECT * FROM sessions
-     WHERE session_date <= ?
-       AND EXISTS (SELECT 1 FROM attendance_records WHERE session_id = sessions.id)
-     ORDER BY session_date DESC LIMIT ?`,
-  )
-    .bind(today, limit)
-    .all();
-
   const weeks: WeeklyRow[] = [];
-
-  for (const session of sessions.results || []) {
-    const sessionId = session.id as string;
-    const sessionDate = session.session_date as string;
-
-    // Without an explicit group filter, detect which group(s) the day's
-    // scheduled event(s) actually cover instead of always averaging over the
-    // full combined roster. This fallback only applies to legacy sessions —
-    // real events (below) already carry their own group_scope directly.
-    let effectiveGroup = group;
-    if (!effectiveGroup) {
-      const dayEvents = await env.DB.prepare('SELECT group_scope FROM events WHERE event_date = ?')
-        .bind(sessionDate)
-        .all<{ group_scope: string }>();
-      const scopes = new Set((dayEvents.results || []).map((e) => e.group_scope));
-      if (scopes.size > 0 && !scopes.has('BOTH') && !(scopes.has('BY') && scopes.has('JDY'))) {
-        effectiveGroup = scopes.has('JDY') ? 'JDY' : 'BY';
-      }
-    }
-
-    const statsQuery = effectiveGroup
-      ? `SELECT
-           COUNT(*) as total,
-           SUM(CASE WHEN ar.status = 'present' THEN 1 ELSE 0 END) as present,
-           SUM(CASE WHEN ar.status = 'late' THEN 1 ELSE 0 END) as late,
-           SUM(CASE WHEN ar.status = 'absent' THEN 1 ELSE 0 END) as absent,
-           SUM(CASE WHEN ar.status = 'excused' THEN 1 ELSE 0 END) as excused
-         FROM attendance_records ar
-         JOIN students st ON st.id = ar.student_id
-         WHERE ar.session_id = ? AND st.group_name = ?`
-      : `SELECT
-           COUNT(*) as total,
-           SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
-           SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
-           SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
-           SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused
-         FROM attendance_records
-         WHERE session_id = ?`;
-    const stats = await env.DB.prepare(statsQuery)
-      .bind(...(effectiveGroup ? [sessionId, effectiveGroup] : [sessionId]))
-      .first<{ total: number; present: number; late: number; absent: number; excused: number }>();
-
-    const total = stats?.total || 0;
-    const present = stats?.present || 0;
-    const late = stats?.late || 0;
-    const absent = stats?.absent || 0;
-    const excused = stats?.excused || 0;
-
-    // "enrolled" is the actual roster size for THIS occurrence (records
-    // taken), not a live re-fetched group headcount — a separately computed
-    // headcount drifts from what really applied on that date (group
-    // membership changes over time, restricted-roster events, etc).
-    const enrolled = total;
-
-    // Excused counts against the rate the same as absent (not excluded from
-    // the denominator) so the rate/trend stays consistent with the raw
-    // present+late+absent+excused breakdown shown elsewhere on the page.
-    weeks.push({
-      occurrence_type: 'session',
-      occurrence_id: sessionId,
-      occurrence_date: sessionDate,
-      occurrence_name: null,
-      enrolled,
-      present,
-      late,
-      absent,
-      excused,
-      total,
-      attendance_rate: enrolled > 0 ? Math.round(((present + late) / enrolled) * 100) : 0,
-    });
-  }
 
   // Events that have never had attendance taken are excluded — otherwise
   // every future/untouched event would show up as a zero-stat phantom row.
@@ -164,8 +80,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const late = stats?.late || 0;
     const absent = stats?.absent || 0;
     const excused = stats?.excused || 0;
+
+    // "enrolled" is the actual roster size for THIS occurrence (records
+    // taken), not a live re-fetched group headcount — a separately computed
+    // headcount drifts from what really applied on that date (group
+    // membership changes over time, restricted-roster events, etc).
     const enrolled = total;
 
+    // Excused counts against the rate the same as absent (not excluded from
+    // the denominator) so the rate/trend stays consistent with the raw
+    // present+late+absent+excused breakdown shown elsewhere on the page.
     weeks.push({
       occurrence_type: 'event',
       occurrence_id: eventId,

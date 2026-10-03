@@ -26,16 +26,6 @@ export interface Student {
   updated_at: string;
 }
 
-export interface Session {
-  id: string;
-  session_date: string;
-  start_time: string;
-  late_threshold_minutes: number;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export type GroupScope = 'BY' | 'JDY' | 'BOTH';
 
 export interface CalendarEvent {
@@ -57,14 +47,13 @@ export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export interface AttendanceRecord {
   id: string;
   student_id: string;
-  session_id?: string;
   status: AttendanceStatus;
   check_in_timestamp: string | null;
   notes: string | null;
   student_name?: string;
   session_date?: string;
   start_time?: string;
-  source?: 'session' | 'event';
+  source?: 'event';
   occurrence_name?: string | null;
   created_at: string;
   updated_at: string;
@@ -134,7 +123,7 @@ export interface AttendanceSummary {
 }
 
 export interface WeeklyReport {
-  occurrence_type: 'session' | 'event';
+  occurrence_type: 'event';
   occurrence_id: string;
   occurrence_date: string;
   occurrence_name: string | null;

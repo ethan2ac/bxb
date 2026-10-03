@@ -85,7 +85,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   }
 
   await env.DB.batch([
-    env.DB.prepare('DELETE FROM attendance_records WHERE student_id = ?').bind(studentId),
     env.DB.prepare('DELETE FROM event_attendance_records WHERE student_id = ?').bind(studentId),
     env.DB.prepare('DELETE FROM forecasts WHERE student_id = ?').bind(studentId),
     env.DB.prepare('DELETE FROM students WHERE id = ?').bind(studentId),

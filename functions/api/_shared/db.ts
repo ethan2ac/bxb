@@ -118,10 +118,9 @@ export async function attachInviteeIds<T extends { id: string }>(
 }
 
 interface Occurrence {
-  type: 'session' | 'event';
   id: string;
   date: string;
-  groupScope?: string; // only set for type 'event' — carries its own scope directly
+  groupScope: string;
 }
 
 export async function calculateNoShows(
@@ -140,10 +139,6 @@ export async function calculateNoShows(
     .bind(...studentBindings)
     .all<{ id: string; english_name: string | null; chinese_name: string | null; group_name: string }>();
 
-  const sessions = await db
-    .prepare('SELECT id, session_date FROM sessions ORDER BY session_date DESC')
-    .all<{ id: string; session_date: string }>();
-
   // Events with zero attendance taken are excluded — otherwise every
   // future/untouched event would wrongly count as a missed occurrence for
   // everyone in scope.
@@ -156,57 +151,18 @@ export async function calculateNoShows(
 
   if (!students.results) return [];
 
-  const occurrences: Occurrence[] = [
-    ...(sessions.results || []).map((s) => ({ type: 'session' as const, id: s.id, date: s.session_date })),
-    ...(events.results || []).map((e) => ({
-      type: 'event' as const,
-      id: e.id,
-      date: e.event_date,
-      groupScope: e.group_scope,
-    })),
-  ].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const occurrences: Occurrence[] = (events.results || [])
+    .map((e) => ({ id: e.id, date: e.event_date, groupScope: e.group_scope }))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
 
   if (occurrences.length === 0) return [];
 
-  // A legacy session's date only "counts" against a student if that day's
-  // scheduled event(s) actually cover their group — otherwise a BY student
-  // with no record on a JDY-only day (or vice versa) would wrongly rack up an
-  // absence streak for an event they were never part of. Real events (above)
-  // already carry their own group_scope directly, so this fallback is only
-  // ever consulted for legacy sessions.
-  const eventRows = await db.prepare('SELECT event_date, group_scope FROM events').all<{
-    event_date: string;
-    group_scope: string;
-  }>();
-  const scopesByDate = new Map<string, Set<string>>();
-  for (const e of eventRows.results || []) {
-    if (!scopesByDate.has(e.event_date)) scopesByDate.set(e.event_date, new Set());
-    scopesByDate.get(e.event_date)!.add(e.group_scope);
-  }
-  const sessionDateAppliesToGroup = (date: string, group: string): boolean => {
-    const scopes = scopesByDate.get(date);
-    // No event on record for this date: fall back to "applies" so legacy
-    // sessions predating the events calendar keep their prior behavior.
-    if (!scopes || scopes.size === 0) return true;
-    return scopes.has('BOTH') || scopes.has(group);
-  };
   const occurrenceAppliesToGroup = (occurrence: Occurrence, group: string): boolean =>
-    occurrence.type === 'event'
-      ? occurrence.groupScope === 'BOTH' || occurrence.groupScope === group
-      : sessionDateAppliesToGroup(occurrence.date, group);
+    occurrence.groupScope === 'BOTH' || occurrence.groupScope === group;
 
   const noShows: NoShowStudent[] = [];
 
   for (const student of students.results) {
-    const sessionRecords = await db
-      .prepare(
-        `SELECT ar.session_id as id, ar.status, s.session_date as date
-         FROM attendance_records ar
-         JOIN sessions s ON s.id = ar.session_id
-         WHERE ar.student_id = ?`,
-      )
-      .bind(student.id)
-      .all<{ id: string; status: string; date: string }>();
     const eventRecords = await db
       .prepare(
         `SELECT ear.event_id as id, ear.status, e.event_date as date
@@ -217,24 +173,19 @@ export async function calculateNoShows(
       .bind(student.id)
       .all<{ id: string; status: string; date: string }>();
 
-    const sessionStatusById = new Map<string, string>();
-    for (const r of sessionRecords.results || []) sessionStatusById.set(r.id, r.status);
     const eventStatusById = new Map<string, string>();
     for (const r of eventRecords.results || []) eventStatusById.set(r.id, r.status);
 
-    // Merged for the "most recent attendance ever" fallback below — sorted
-    // DESC the same way as the occurrence walk.
-    const allRecords = [...(sessionRecords.results || []), ...(eventRecords.results || [])].sort((a, b) =>
-      b.date.localeCompare(a.date),
-    );
+    // For the "most recent attendance ever" fallback below — sorted DESC the
+    // same way as the occurrence walk.
+    const allRecords = [...(eventRecords.results || [])].sort((a, b) => b.date.localeCompare(a.date));
 
     let consecutiveAbsences = 0;
     let lastAttended: string | null = null;
 
     for (const occurrence of occurrences) {
       if (!occurrenceAppliesToGroup(occurrence, student.group_name)) continue;
-      const status =
-        occurrence.type === 'event' ? eventStatusById.get(occurrence.id) : sessionStatusById.get(occurrence.id);
+      const status = eventStatusById.get(occurrence.id);
       if (status === 'present' || status === 'late') {
         if (!lastAttended) lastAttended = occurrence.date;
         break;

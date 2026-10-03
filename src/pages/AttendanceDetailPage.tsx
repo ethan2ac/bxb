@@ -9,15 +9,10 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { formatDate } from '../utils/dates';
-import type { Session, CalendarEvent, AttendanceRecord, EventAttendanceRecord, AttendanceStatus } from '../types';
+import type { CalendarEvent, EventAttendanceRecord, AttendanceStatus } from '../types';
 
-type OccurrenceType = 'session' | 'event';
-type DetailRecord = AttendanceRecord | EventAttendanceRecord;
+type DetailRecord = EventAttendanceRecord;
 
-interface SessionResponse {
-  session: Session | null;
-  records: AttendanceRecord[];
-}
 interface EventResponse {
   event: CalendarEvent | null;
   records: EventAttendanceRecord[];
@@ -44,12 +39,14 @@ const AMEND_STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
 ];
 
 export function AttendanceDetailPage() {
-  const { type, id } = useParams<{ type: OccurrenceType; id: string }>();
+  // The :type segment is kept in the URL so existing History links keep
+  // resolving; only 'event' occurrences exist now that legacy sessions are gone.
+  const { type, id } = useParams<{ type: string; id: string }>();
   const navigate = useNavigate();
   const { addToast } = useUiStore();
   const isEvent = type === 'event';
-  const url = id ? (isEvent ? `/api/event-attendance?eventId=${id}` : `/api/attendance?sessionId=${id}`) : null;
-  const { data, loading, refetch } = useApi<SessionResponse | EventResponse>(url);
+  const url = id && isEvent ? `/api/event-attendance?eventId=${id}` : null;
+  const { data, loading, refetch } = useApi<EventResponse>(url);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
@@ -69,8 +66,7 @@ export function AttendanceDetailPage() {
     if (!amending || !amendReason.trim()) return;
     setSubmittingAmend(true);
     try {
-      const endpoint = isEvent ? `/api/event-attendance/${amending.id}` : `/api/attendance/${amending.id}`;
-      await api.put(endpoint, { status: amendStatus, reason: amendReason.trim() });
+      await api.put(`/api/event-attendance/${amending.id}`, { status: amendStatus, reason: amendReason.trim() });
       addToast('Attendance amended', 'success');
       setAmending(null);
       await refetch();
@@ -81,7 +77,7 @@ export function AttendanceDetailPage() {
     }
   };
 
-  const occurrence = isEvent ? (data as EventResponse | null)?.event : (data as SessionResponse | null)?.session;
+  const occurrence = data?.event ?? null;
   const records: DetailRecord[] = data?.records ?? [];
 
   const counts = useMemo(() => {
@@ -109,9 +105,9 @@ export function AttendanceDetailPage() {
     );
   }
 
-  const date = isEvent ? (occurrence as CalendarEvent).event_date : (occurrence as Session).session_date;
-  const name = isEvent ? (occurrence as CalendarEvent).name : 'Attendance';
-  const scope = isEvent ? (occurrence as CalendarEvent).group_scope : null;
+  const date = occurrence.event_date;
+  const name = occurrence.name;
+  const scope = occurrence.group_scope;
   const notes = occurrence.notes;
 
   return (

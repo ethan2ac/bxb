@@ -22,49 +22,33 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
   const statusFilter = url.searchParams.get('status');
   const validStatus = statusFilter && ['present', 'absent', 'late', 'excused'].includes(statusFilter);
 
-  // Combines the legacy (sessions/attendance_records) and newer
-  // (events/event_attendance_records) attendance systems into one history —
-  // aliasing both branches' date column to `session_date` keeps the existing
+  // The date column is aliased to `session_date` to keep the existing
   // frontend field name working unchanged.
-  let sessionBranch = `
-    SELECT ar.id, ar.student_id, ar.status, ar.check_in_timestamp, ar.notes, ar.created_at, ar.updated_at,
-      s.session_date as session_date, s.start_time as start_time, 'session' as source, NULL as occurrence_name
-    FROM attendance_records ar
-    JOIN sessions s ON s.id = ar.session_id
-    WHERE ar.student_id = ?
-  `;
-  let eventBranch = `
+  let query = `
     SELECT ear.id, ear.student_id, ear.status, ear.check_in_timestamp, ear.notes, ear.created_at, ear.updated_at,
       e.event_date as session_date, e.start_time as start_time, 'event' as source, e.name as occurrence_name
     FROM event_attendance_records ear
     JOIN events e ON e.id = ear.event_id
     WHERE ear.student_id = ?
   `;
-  const sessionBindings: unknown[] = [studentId];
-  const eventBindings: unknown[] = [studentId];
+  const bindings: unknown[] = [studentId];
 
   if (from) {
-    sessionBranch += ' AND s.session_date >= ?';
-    eventBranch += ' AND e.event_date >= ?';
-    sessionBindings.push(from);
-    eventBindings.push(from);
+    query += ' AND e.event_date >= ?';
+    bindings.push(from);
   }
   if (to) {
-    sessionBranch += ' AND s.session_date <= ?';
-    eventBranch += ' AND e.event_date <= ?';
-    sessionBindings.push(to);
-    eventBindings.push(to);
+    query += ' AND e.event_date <= ?';
+    bindings.push(to);
   }
   if (validStatus) {
-    sessionBranch += ' AND ar.status = ?';
-    eventBranch += ' AND ear.status = ?';
-    sessionBindings.push(statusFilter);
-    eventBindings.push(statusFilter);
+    query += ' AND ear.status = ?';
+    bindings.push(statusFilter);
   }
+  query += ' ORDER BY session_date DESC';
 
-  const query = `${sessionBranch} UNION ALL ${eventBranch} ORDER BY session_date DESC`;
   const records = await env.DB.prepare(query)
-    .bind(...sessionBindings, ...eventBindings)
+    .bind(...bindings)
     .all();
 
   const total = records.results?.length || 0;
