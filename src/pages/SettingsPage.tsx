@@ -29,7 +29,7 @@ export function SettingsPage() {
   const { data: logs, loading: loadingLogs, refetch: refetchLogs } = useApi<AuditLog[]>('/api/audit-logs?limit=15');
 
   const [startTime, setStartTime] = useState('09:00');
-  const [threshold, setThreshold] = useState(15);
+  const [threshold, setThreshold] = useState(60);
   const [noShowThreshold, setNoShowThreshold] = useState(3);
   const [saving, setSaving] = useState(false);
   const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -94,9 +94,9 @@ export function SettingsPage() {
                   id="threshold"
                   type="number"
                   min={1}
-                  max={60}
+                  max={240}
                   value={threshold}
-                  onChange={(e) => setThreshold(parseInt(e.target.value, 10) || 15)}
+                  onChange={(e) => setThreshold(parseInt(e.target.value, 10) || 60)}
                   className={inputClass}
                 />
                 <p className="mt-1.5 text-xs text-ink-400">

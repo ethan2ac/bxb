@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { displayName } from '../utils/students';
-import type { CalendarEvent, GroupScope, Student } from '../types';
+import type { AppSettings, CalendarEvent, GroupScope, Student } from '../types';
 
 export interface EventFormData {
   name: string;
@@ -181,13 +181,28 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
     event_date: initial?.event_date || '',
     group_scope: initial?.group_scope || 'BOTH',
     start_time: initial?.start_time || '09:00',
-    late_threshold_minutes: initial?.late_threshold_minutes ?? 15,
+    late_threshold_minutes: initial?.late_threshold_minutes ?? 60,
     notes: initial?.notes || '',
     restricted_roster: initial?.restricted_roster ?? false,
     invitee_student_ids: initial?.invitee_student_ids ?? [],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // New events take their start time / late threshold from Settings rather
+  // than hardcoded values, so changing the default there actually applies.
+  // Only fills fields the caller didn't supply (editing keeps the event's own).
+  const { data: settings } = useApi<AppSettings>('/api/settings');
+  useEffect(() => {
+    if (!settings) return;
+    setForm((f) => ({
+      ...f,
+      start_time: initial?.start_time ?? settings.default_start_time,
+      late_threshold_minutes:
+        initial?.late_threshold_minutes ?? (parseInt(settings.default_late_threshold_minutes, 10) || 60),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,7 +297,7 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
             min={1}
             required
             value={form.late_threshold_minutes}
-            onChange={(e) => setForm({ ...form, late_threshold_minutes: parseInt(e.target.value, 10) || 15 })}
+            onChange={(e) => setForm({ ...form, late_threshold_minutes: parseInt(e.target.value, 10) || 60 })}
             className={inputClass}
           />
         </div>

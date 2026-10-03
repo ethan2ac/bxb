@@ -19,7 +19,7 @@ export function getOrgTodayDate(): string {
 export const DEFAULT_SETTINGS = {
   no_show_threshold: '3',
   default_start_time: '09:00',
-  default_late_threshold_minutes: '15',
+  default_late_threshold_minutes: '60',
 };
 
 export type SettingsMap = typeof DEFAULT_SETTINGS;

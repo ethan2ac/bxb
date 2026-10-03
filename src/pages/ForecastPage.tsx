@@ -10,7 +10,7 @@ import { EventPicker } from '../components/EventPicker';
 import { GroupSummaryTable } from '../components/GroupSummaryTable';
 import { RosterToolbar, type SortBy } from '../components/RosterToolbar';
 import { PageHeader } from '../components/PageHeader';
-import { formatDate, getTodayDateString } from '../utils/dates';
+import { getTodayDateString } from '../utils/dates';
 import { displayName, levelSortIndex } from '../utils/students';
 import type { Student, CalendarEvent, Forecast, ForecastEntry, ForecastExpectation } from '../types';
 
@@ -257,14 +257,10 @@ export function ForecastPage() {
       <PageHeader
         eyebrow="Session"
         title="Forecast"
-        description={
-          selectedEvent
-            ? `${selectedEvent.name} · ${formatDate(selectedEvent.event_date)}`
-            : 'Plan expected attendance ahead of an event'
-        }
+        description={selectedEvent ? undefined : 'Plan expected attendance ahead of an event'}
       />
 
-      {pickerEvents.length > 1 && (
+      {pickerEvents.length > 0 && (
         <EventPicker events={pickerEvents} selectedId={eventId || null} onSelect={setManualEventId} />
       )}
 

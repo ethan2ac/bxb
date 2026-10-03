@@ -47,7 +47,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       body.event_date,
       body.group_scope,
       body.start_time || '09:00',
-      body.late_threshold_minutes || 15,
+      body.late_threshold_minutes || (existing.late_threshold_minutes as number),
       body.notes || null,
       restrictedRoster ? 1 : 0,
       now(),

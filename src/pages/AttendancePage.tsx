@@ -7,7 +7,7 @@ import { EmptyState } from '../components/EmptyState';
 import { EventPicker } from '../components/EventPicker';
 import { PageHeader } from '../components/PageHeader';
 import { EventAttendanceView } from '../components/EventAttendanceView';
-import { getTodayDateString, formatDate } from '../utils/dates';
+import { getTodayDateString } from '../utils/dates';
 import type { CalendarEvent } from '../types';
 
 export function AttendancePage() {
@@ -35,15 +35,9 @@ export function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Session"
-        title="Attendance"
-        description={activeEvent ? `${activeEvent.name} · ${formatDate(activeEvent.event_date)}` : 'No upcoming events yet'}
-      />
+      <PageHeader eyebrow="Session" title="Attendance" description={activeEvent ? undefined : 'No upcoming events yet'} />
 
-      {/* One chip isn't a choice — only show the picker when there's more
-          than one upcoming event to switch between. */}
-      {upcomingEvents.length > 1 && (
+      {upcomingEvents.length > 0 && (
         <EventPicker events={upcomingEvents} selectedId={activeEventId} onSelect={setSelectedEventId} />
       )}
 
