@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Users, ClipboardCheck, UserX, CalendarDays, ArrowRight, ChevronRight, TrendingUp } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
+import { PageHeader } from '../components/PageHeader';
 import { Badge } from '../components/Badge';
 import { StatStrip } from '../components/StatStrip';
 import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
@@ -36,7 +37,7 @@ export function DashboardPage() {
   const { data: noShows, loading: loadingNoShows } = useApi<NoShowStudent[]>(`/api/no-shows?${groupQs}`);
   const { data: trend, loading: loadingTrend } = useApi<MonthlyTrend[]>(`/api/reports/monthly?${groupQs}months=6`);
 
-  if (loadingStudents || loadingWeeks || loadingNoShows || loadingTrend) return <LoadingSpinner />;
+  if (loadingStudents || loadingWeeks || loadingNoShows || loadingTrend) return <PageSkeleton />;
 
   const byCount = students?.filter((s) => s.group_name === 'BY').length || 0;
   const jdyCount = students?.filter((s) => s.group_name === 'JDY').length || 0;
@@ -51,18 +52,12 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Hero */}
-      <div>
-        <span className="eyebrow">01 — Overview</span>
-        <h1 className="mt-3 font-display text-5xl leading-[0.95] tracking-tight text-ink-900 md:text-6xl">
-          Dashboard
-        </h1>
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-base text-ink-400">
-            Sunday attendance overview &mdash; everything at a glance.
-          </p>
-          <GroupToggle value={group} onChange={setGroup} />
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        description="Sunday attendance overview — everything at a glance."
+        actions={<GroupToggle value={group} onChange={setGroup} />}
+      />
 
       <StatStrip
         cells={[

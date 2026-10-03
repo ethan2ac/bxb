@@ -4,7 +4,8 @@ import { useUiStore } from '../store/ui';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { formatDateTime } from '../utils/dates';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LoadingSpinner, PageSkeleton } from '../components/LoadingSpinner';
+import { PageHeader } from '../components/PageHeader';
 import type { AppSettings, AuditLog } from '../types';
 
 const inputClass =
@@ -58,14 +59,11 @@ export function SettingsPage() {
     }
   };
 
-  if (loadingSettings) return <LoadingSpinner />;
+  if (loadingSettings) return <PageSkeleton />;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Settings</h1>
-        <p className="mt-2 text-base text-ink-400">Configure your attendance program</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader eyebrow="Account" title="Settings" description="Configure your attendance program" />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">

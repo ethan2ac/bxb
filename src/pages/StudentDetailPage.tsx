@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, UserCheck, UserX, CalendarClock, History as HistoryIcon } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LoadingSpinner, PageSkeleton } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { formatDate, formatTime } from '../utils/dates';
 import { displayName, initials, groupLabel } from '../utils/students';
@@ -61,7 +61,7 @@ export function StudentDetailPage() {
     setFilteredRecords(null);
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
   if (!data) return <div className="p-12 text-center text-ink-400">Student not found</div>;
 
   const { student, records, summary } = data;

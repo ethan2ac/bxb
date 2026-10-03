@@ -4,7 +4,7 @@ import { ArrowLeft, Search, UserCheck, Clock, CalendarClock, UserX, Pencil } fro
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
@@ -98,7 +98,7 @@ export function AttendanceDetailPage() {
     return matchesStatus && matchesSearch;
   });
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
 
   if (!occurrence) {
     return (

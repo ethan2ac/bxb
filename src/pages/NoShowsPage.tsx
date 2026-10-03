@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UserX, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
+import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { GroupToggle, type GroupToggleValue } from '../components/GroupToggle';
 import { formatDate } from '../utils/dates';
@@ -25,19 +26,16 @@ export function NoShowsPage() {
   const { data: settings } = useApi<AppSettings>('/api/settings');
   const threshold = settings ? parseInt(settings.no_show_threshold, 10) : 3;
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">No Shows</h1>
-        <p className="mt-2 text-base text-ink-400">
-          Students with more than {threshold} consecutive absences
-        </p>
-        <div className="mt-4">
-          <GroupToggle value={group} onChange={setGroup} />
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Insights"
+        title="No Shows"
+        description={`Students with more than ${threshold} consecutive absences`}
+        actions={<GroupToggle value={group} onChange={setGroup} />}
+      />
 
       {!noShows || noShows.length === 0 ? (
         <EmptyState

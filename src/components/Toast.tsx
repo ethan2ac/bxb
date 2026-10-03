@@ -19,13 +19,16 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+    // Above the phone tab bar on mobile (centered, like iOS/Android
+    // snackbars); bottom-right on desktop.
+    <div className="fixed inset-x-4 bottom-24 z-[70] flex flex-col items-center gap-2 lg:inset-x-auto lg:bottom-6 lg:right-6 lg:items-end">
       {toasts.map((toast) => {
         const Icon = icons[toast.type];
         return (
           <div
             key={toast.id}
-            className={`flex items-center gap-3 rounded-card-sm border px-5 py-3.5 shadow-card-hover ${styles[toast.type]}`}
+            role="status"
+            className={`flex w-full max-w-sm items-center gap-3 rounded-card-sm border px-5 py-3.5 shadow-shell ${styles[toast.type]}`}
           >
             <Icon className="h-5 w-5 flex-shrink-0" />
             <span className="text-sm font-medium">{toast.message}</span>

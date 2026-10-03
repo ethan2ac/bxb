@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageHeader } from '../components/PageHeader';
 import { EmptyState } from '../components/EmptyState';
 import { formatDate } from '../utils/dates';
 import type { WeeklyReport, UpcomingForecast } from '../types';
@@ -25,36 +26,35 @@ export function WeeklyReportPage() {
   const loading = view === 'attendance' ? loadingWeeks : loadingUpcoming;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">History</h1>
-        <p className="mt-2 text-base text-ink-400">
-          {view === 'attendance'
-            ? 'Past events and their recorded attendance'
-            : 'Upcoming events and expected attendance'}
-        </p>
-        <div className="mt-4 flex items-center gap-2">
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Insights"
+        title="History"
+        description={
+          view === 'attendance' ? 'Past events and their recorded attendance' : 'Upcoming events and expected attendance'
+        }
+      />
+      {/* Underline tabs (GitHub/Stripe style) — a view switch within one
+          page, distinct from the filled chips used for filtering a list. */}
+      <div className="flex gap-6 border-b border-ink-200" role="tablist">
+        {(
+          [
+            ['attendance', 'Past attendance'],
+            ['forecast', 'Upcoming forecast'],
+          ] as const
+        ).map(([key, label]) => (
           <button
-            onClick={() => setView('attendance')}
-            className={`rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
-              view === 'attendance'
-                ? 'border-accent-charcoal bg-accent-charcoal text-white'
-                : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
+            key={key}
+            role="tab"
+            aria-selected={view === key}
+            onClick={() => setView(key)}
+            className={`-mb-px border-b-2 pb-3 text-sm font-medium transition-colors ${
+              view === key ? 'border-accent-charcoal text-ink-900' : 'border-transparent text-ink-400 hover:text-ink-700'
             }`}
           >
-            Attendance &middot; Past
+            {label}
           </button>
-          <button
-            onClick={() => setView('forecast')}
-            className={`rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
-              view === 'forecast'
-                ? 'border-accent-charcoal bg-accent-charcoal text-white'
-                : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
-            }`}
-          >
-            Forecast &middot; Upcoming
-          </button>
-        </div>
+        ))}
       </div>
 
       {loading && <LoadingSpinner />}

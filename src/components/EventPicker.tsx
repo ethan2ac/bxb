@@ -14,7 +14,9 @@ interface EventPickerProps {
 // sentinel on the other) for what is the same underlying task.
 export function EventPicker({ events, selectedId, onSelect }: EventPickerProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    // Bleeds to the screen edge on mobile so chips scroll off-screen naturally
+    // (signals "swipe for more") instead of clipping at the content padding.
+    <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
       {events.map((event) => {
         const active = event.id === selectedId;
         return (

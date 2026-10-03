@@ -4,7 +4,8 @@ import { Trash2, ArrowRight, Plus, TrendingUp, ClipboardCheck } from 'lucide-rea
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
+import { PageHeader } from '../components/PageHeader';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
 import { MonthCalendar } from '../components/MonthCalendar';
@@ -61,16 +62,24 @@ export function SchedulePage() {
     await refetch();
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Schedule</h1>
-        <p className="mt-2 text-base text-ink-400">
-          Click any day to create an event, or click an existing one to view, edit, or remove it
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Session"
+        title="Schedule"
+        description="Tap any day to add an event, or an existing one to view, edit, or remove it."
+        actions={
+          <button
+            onClick={() => setModal({ type: 'create', date: getTodayDateString() })}
+            className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-5 py-2.5 text-sm font-medium text-white shadow-pill transition-colors hover:bg-accent-dark"
+          >
+            <Plus className="h-4 w-4" />
+            New Event
+          </button>
+        }
+      />
 
       <MonthCalendar month={month} events={events || []} onMonthChange={setMonth} onDayClick={handleDayClick} />
 

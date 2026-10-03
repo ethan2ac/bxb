@@ -5,7 +5,8 @@ import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
 import { useAuthStore } from '../store/auth';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
+import { PageHeader } from '../components/PageHeader';
 import { Modal } from '../components/Modal';
 import { formatDateTime } from '../utils/dates';
 import type { TeamUser } from '../types';
@@ -56,17 +57,15 @@ export function AdminUsersPage() {
   };
 
   if (currentUser?.role !== 'owner') return <Navigate to="/" replace />;
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Manage Users</h1>
-        <p className="mt-2 text-base text-ink-400">
-          Only your account can see this page. Teammates create their own login from the Login screen's
-          Register link using the invite code you share with them.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Account"
+        title="Manage Users"
+        description="Only your account can see this page. Teammates create their own login from the Login screen's Register link using the invite code you share with them."
+      />
 
       <div className="overflow-hidden rounded-card border border-ink-100 bg-white shadow-card">
         <div className="divide-y divide-ink-100">

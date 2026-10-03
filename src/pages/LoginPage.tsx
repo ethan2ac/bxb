@@ -43,17 +43,20 @@ export function LoginPage() {
     'mt-1.5 block w-full rounded-card-sm border border-ink-200 bg-ink-50/50 px-4 py-3 text-sm text-ink-800 shadow-sm placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400 transition-colors';
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-shell-bg p-4">
+    <div className="flex min-h-screen items-center justify-center bg-shell-surface p-4">
       <div className="relative w-full max-w-md">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-[300px] w-[300px] rounded-full bg-accent-yellow/10 blur-3xl" />
-        <div className="relative rounded-shell bg-shell-surface p-10 shadow-shell">
-          <div className="mb-10 text-center">
-            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-charcoal text-lg font-bold text-white shadow-pill">
-              P
+        <div className="relative rounded-card border border-ink-200/70 bg-white p-8 shadow-shell sm:p-10">
+          <div className="mb-8">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 bg-accent-charcoal" />
+              <span className="font-display text-2xl tracking-tight text-ink-900">PYB</span>
+              <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-400">Attendance</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight-lg text-ink-900">PYB Attendance</h1>
-            <p className="mt-1.5 text-sm text-ink-400">
-              {mode === 'register' ? 'Create your account' : 'Sign in to manage your program'}
+            <h1 className="mt-6 font-display text-4xl leading-[0.95] tracking-tight text-ink-900">
+              {mode === 'register' ? 'Create account' : 'Welcome back'}
+            </h1>
+            <p className="mt-2 text-sm text-ink-400">
+              {mode === 'register' ? 'Use the invite code from your team owner.' : 'Sign in to manage your program.'}
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">

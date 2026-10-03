@@ -17,13 +17,22 @@
   }
 
   body {
-    background: #e8eaef;
+    background: #f7f5f2;
   }
 }
 
 @layer utilities {
   .tracking-tight-lg {
     letter-spacing: -0.025em;
+  }
+
+  /* Horizontal chip rows scroll by swipe/trackpad; a visible scrollbar under
+     them reads as broken UI. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Mono, uppercase, wide-tracked micro-label with a small square bullet —

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Lock, AlertTriangle } from 'lucide-react';
+import { Lock, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
 import { LoadingSpinner } from './LoadingSpinner';
 import { RosterPanel } from './RosterPanel';
 import { GroupSummaryTable } from './GroupSummaryTable';
-import { FilterPanel, type SortBy } from './FilterPanel';
+import { RosterToolbar, type SortBy } from './RosterToolbar';
 import { formatDate, getTodayDateString } from '../utils/dates';
 import { displayName, levelSortIndex } from '../utils/students';
 import type {
@@ -56,10 +56,11 @@ function hasEventStarted(event: CalendarEvent, atTime: number): boolean {
 }
 
 // Per-event attendance-taking UI, shared between the main Attendance nav page
-// (which picks an event via date + dropdown) and the Schedule-page deep link
+// (which picks an event via the EventPicker) and the Schedule-page deep link
 // into a specific event — each renders attendance independently, never
-// merged across events even when they share a date.
-export function EventAttendanceView({ eventId }: { eventId: string }) {
+// merged across events even when they share a date. `showHeader` is off on
+// the Attendance page, whose own page header already names the event.
+export function EventAttendanceView({ eventId, showHeader = true }: { eventId: string; showHeader?: boolean }) {
   const { addToast } = useUiStore();
   const [event, setEvent] = useState<CalendarEvent | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
@@ -313,14 +314,20 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
   // requires a reason and keeps an audit trail rather than a silent re-save.
   const isPast = event.event_date < getTodayDateString();
 
+  const statusCount = (status: AttendanceStatus) => roster.filter((e) => e.status === status).length;
+  const hereCount = statusCount('present') + statusCount('late');
+
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6">
+      {showHeader && (
         <div>
-          <h2 className="text-2xl font-bold tracking-tight-lg text-ink-900">{event.name}</h2>
-          <p className="mt-1 text-sm text-ink-400">{formatDate(event.event_date)}</p>
+          <span className="eyebrow">Session</span>
+          <h1 className="mt-2 font-display text-[2.5rem] leading-[0.95] tracking-tight text-ink-900 sm:text-5xl">
+            {event.name}
+          </h1>
+          <p className="mt-2 text-sm text-ink-400 sm:text-[15px]">{formatDate(event.event_date)}</p>
         </div>
-      </div>
+      )}
 
       {isPast && (
         <div className="flex items-center gap-3 rounded-card border border-ink-100 bg-ink-50 px-5 py-4 text-sm text-ink-600">
@@ -335,41 +342,31 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        {/* Filter panel — shown above the roster on mobile for easy access,
-            hidden here on desktop where it lives in the side column instead. */}
-        <div className="lg:hidden">
-          <FilterPanel
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 space-y-4">
+          <RosterToolbar
+            search={search}
+            onSearchChange={setSearch}
             sortBy={sortBy}
             onSortByChange={setSortBy}
-            levelSortLabel="Level"
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
-            statusOptions={STATUS_OPTIONS}
+            statusOptions={STATUS_OPTIONS.map((opt) => ({
+              ...opt,
+              count: opt.value === 'all' ? roster.length : statusCount(opt.value),
+            }))}
+            progress={{ value: hereCount, total: roster.length, label: 'here' }}
           />
-        </div>
-
-        <div className="flex-1 space-y-5">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
-            <input
-              type="text"
-              placeholder="Search students..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
-            />
-          </div>
           {!isPast && (
             <p className="text-xs text-ink-400">
-              Tap the circle to cycle: absent &rarr; present &rarr; excused &rarr; absent. Changes save automatically.
+              Tap a circle to cycle absent → present → excused. Saves automatically.
             </p>
           )}
           {noShowIds.size > 0 && (
-            <p className="flex items-center gap-1.5 text-xs font-medium text-status-danger">
-              <AlertTriangle className="h-3.5 w-3.5" />
+            <p className="flex items-center gap-1.5 rounded-lg bg-status-danger-soft px-3 py-2 text-xs font-medium text-status-danger">
+              <AlertTriangle className="h-3.5 w-3.5 flex-none" />
               {noShowIds.size} {noShowIds.size === 1 ? 'student' : 'students'} said yes on the Forecast but{' '}
-              {noShowIds.size === 1 ? "hasn't" : "haven't"} shown up — highlighted in red below.
+              {noShowIds.size === 1 ? "hasn't" : "haven't"} shown up.
             </p>
           )}
 
@@ -407,16 +404,6 @@ export function EventAttendanceView({ eventId }: { eventId: string }) {
         </div>
 
         <div className="w-full space-y-5 lg:w-72">
-          <div className="hidden lg:block">
-            <FilterPanel
-              sortBy={sortBy}
-              onSortByChange={setSortBy}
-              levelSortLabel="Level"
-              statusFilter={statusFilter}
-              onStatusFilterChange={setStatusFilter}
-              statusOptions={STATUS_OPTIONS}
-            />
-          </div>
           <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
             <h3 className="text-sm font-semibold text-ink-700">Forecast Summary</h3>
             <p className="mt-0.5 text-xs text-ink-400">Who was expected, from the Forecast page</p>

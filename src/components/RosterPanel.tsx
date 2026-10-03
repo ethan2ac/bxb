@@ -52,7 +52,7 @@ export function RosterPanel({
               return (
                 <div
                   key={entry.student.id}
-                  className={`px-6 py-4 transition-colors ${
+                  className={`px-4 py-3.5 transition-colors sm:px-6 sm:py-4 ${
                     isFlagged
                       ? 'bg-status-danger-soft'
                       : entry.status === 'late'

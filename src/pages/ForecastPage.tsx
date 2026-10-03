@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Search, Check, X as XIcon, CalendarOff, CheckCircle2, Loader2 } from 'lucide-react';
+import { Check, X as XIcon, CalendarOff, CheckCircle2, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { LoadingSpinner, PageSkeleton } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { EventPicker } from '../components/EventPicker';
 import { GroupSummaryTable } from '../components/GroupSummaryTable';
-import { FilterPanel, type SortBy } from '../components/FilterPanel';
+import { RosterToolbar, type SortBy } from '../components/RosterToolbar';
+import { PageHeader } from '../components/PageHeader';
 import { formatDate, getTodayDateString } from '../utils/dates';
 import { displayName, levelSortIndex } from '../utils/students';
 import type { Student, CalendarEvent, Forecast, ForecastEntry, ForecastExpectation } from '../types';
@@ -55,7 +56,7 @@ function ForecastRosterList({
             {rows.map((entry) => {
               const needsReason = entry.expected === 'no' || entry.expected === 'excused';
               return (
-                <div key={entry.student.id} className="px-6 py-4 transition-colors hover:bg-ink-50/50">
+                <div key={entry.student.id} className="px-4 py-3.5 transition-colors hover:bg-ink-50/50 sm:px-6 sm:py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <button
@@ -249,18 +250,21 @@ export function ForecastPage() {
   const summaryStats = isBoth ? [byStats, jdyStats] : selectedEvent?.group_scope === 'JDY' ? [jdyStats] : [byStats];
   const expectedCount = roster.filter((e) => e.expected === 'yes').length;
 
-  if (loadingEvents) return <LoadingSpinner />;
+  if (loadingEvents) return <PageSkeleton />;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Forecast</h1>
-        <p className="mt-2 text-base text-ink-400">
-          {selectedEvent ? formatDate(selectedEvent.event_date) : 'Plan expected attendance ahead of an event'}
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Session"
+        title="Forecast"
+        description={
+          selectedEvent
+            ? `${selectedEvent.name} · ${formatDate(selectedEvent.event_date)}`
+            : 'Plan expected attendance ahead of an event'
+        }
+      />
 
-      {pickerEvents.length > 0 && (
+      {pickerEvents.length > 1 && (
         <EventPicker events={pickerEvents} selectedId={eventId || null} onSelect={setManualEventId} />
       )}
 
@@ -275,33 +279,23 @@ export function ForecastPage() {
 
       {eventId && !loading && (
         <>
-          <div className="flex flex-col gap-6 lg:flex-row">
-            {/* Filter panel — shown above the roster on mobile for easy access,
-                hidden here on desktop where it lives in the side column instead. */}
-            <div className="lg:hidden">
-              <FilterPanel
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1 space-y-4">
+              <RosterToolbar
+                search={search}
+                onSearchChange={setSearch}
                 sortBy={sortBy}
                 onSortByChange={setSortBy}
-                levelSortLabel="Level"
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
-                statusOptions={STATUS_OPTIONS}
+                statusOptions={STATUS_OPTIONS.map((opt) => ({
+                  ...opt,
+                  count: opt.value === 'all' ? roster.length : roster.filter((e) => e.expected === opt.value).length,
+                }))}
+                progress={{ value: expectedCount, total: roster.length, label: 'expected' }}
               />
-            </div>
-
-            <div className="flex-1 space-y-5">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
-                <input
-                  type="text"
-                  placeholder="Search students..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
-                />
-              </div>
               <p className="text-xs text-ink-400">
-                Tap the circle to cycle: not expected &rarr; expected &rarr; excused &rarr; not expected.
+                Tap a circle to cycle not expected → expected → excused. Saves automatically.
               </p>
 
               {isBoth ? (
@@ -332,16 +326,6 @@ export function ForecastPage() {
             </div>
 
             <div className="w-full space-y-5 lg:w-72">
-              <div className="hidden lg:block">
-                <FilterPanel
-                  sortBy={sortBy}
-                  onSortByChange={setSortBy}
-                  levelSortLabel="Level"
-                  statusFilter={statusFilter}
-                  onStatusFilterChange={setStatusFilter}
-                  statusOptions={STATUS_OPTIONS}
-                />
-              </div>
               <div className="rounded-card border border-ink-100 bg-white p-6 shadow-card">
                 <h3 className="text-sm font-semibold text-ink-700">Expected Headcount</h3>
                 <p className="mt-4 text-4xl font-bold tracking-tight-lg text-status-success">{expectedCount}</p>

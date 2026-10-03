@@ -5,20 +5,23 @@ interface GroupToggleProps {
   onChange: (value: GroupToggleValue) => void;
 }
 
+// Segmented control — one bordered track with the active segment filled,
+// the same shape as the roster toolbar's sort switch, so "pick one of a few
+// views" looks the same everywhere it appears.
 export function GroupToggle({ value, onChange }: GroupToggleProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="inline-flex h-10 items-center rounded-lg border border-ink-200 bg-white p-0.5" role="group" aria-label="Group">
       {(['ALL', 'BY', 'JDY'] as GroupToggleValue[]).map((g) => (
         <button
           key={g}
+          type="button"
           onClick={() => onChange(g)}
-          className={`rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
-            value === g
-              ? 'border-accent-charcoal bg-accent-charcoal text-white'
-              : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
+          aria-pressed={value === g}
+          className={`h-full rounded-md px-3.5 text-[13px] font-medium transition-colors ${
+            value === g ? 'bg-accent-charcoal text-white shadow-sm' : 'text-ink-500 hover:text-ink-800'
           }`}
         >
-          {g === 'ALL' ? 'All Groups' : g}
+          {g === 'ALL' ? 'All' : g}
         </button>
       ))}
     </div>

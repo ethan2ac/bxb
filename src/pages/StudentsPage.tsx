@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Archive, RotateCcw, ChevronRight, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Archive, RotateCcw, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { useUiStore } from '../store/ui';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { StudentForm } from '../components/StudentForm';
+import { PageHeader } from '../components/PageHeader';
+import { GroupToggle } from '../components/GroupToggle';
 import { displayName, initials, groupLabel, editableNameFields } from '../utils/students';
 import { BY_LEVELS } from '../types';
 import type { Student, StudentFormData, GroupName } from '../types';
 
 function StudentInitials({ student }: { student: Student }) {
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-500">
+    <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-ink-100 text-xs font-semibold text-ink-500">
       {initials(student)}
     </div>
   );
@@ -100,46 +102,33 @@ export function StudentsPage() {
     }
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Students</h1>
-          <p className="mt-2 text-base text-ink-400">
-            {showArchived ? `${filtered.length} archived students` : `${filtered.length} enrolled students`}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-6 py-2.5 text-sm font-medium text-white shadow-pill transition-all hover:bg-accent-dark"
-        >
-          <Plus className="h-4 w-4" />
-          Add Student
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {(['ALL', 'BY', 'JDY'] as GroupFilter[]).map((g) => (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="People"
+        title="Students"
+        description={showArchived ? `${filtered.length} archived` : `${filtered.length} enrolled`}
+        actions={
           <button
-            key={g}
-            onClick={() => handleGroupFilterChange(g)}
-            className={`rounded-pill border px-4 py-2 text-sm font-medium transition-colors ${
-              groupFilter === g
-                ? 'border-accent-charcoal bg-accent-charcoal text-white'
-                : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
-            }`}
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 rounded-pill bg-accent-charcoal px-5 py-2.5 text-sm font-medium text-white shadow-pill transition-colors hover:bg-accent-dark"
           >
-            {g === 'ALL' ? 'All Groups' : g}
+            <Plus className="h-4 w-4" />
+            Add Student
           </button>
-        ))}
+        }
+      />
+
+      <div className="no-scrollbar -mx-4 flex items-center gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+        <GroupToggle value={groupFilter} onChange={handleGroupFilterChange} />
         {groupFilter === 'BY' && (
           <>
-            <span className="mx-1 h-5 w-px bg-ink-200" />
+            <span className="mx-1 h-5 w-px flex-none bg-ink-200" />
             <button
               onClick={() => setLevelFilter('')}
-              className={`rounded-pill border px-3 py-2 text-xs font-medium transition-colors ${
+              className={`flex-none rounded-pill border px-3 py-2 text-xs font-medium transition-colors ${
                 levelFilter === ''
                   ? 'border-ink-300 bg-ink-200 text-ink-700'
                   : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
@@ -151,7 +140,7 @@ export function StudentsPage() {
               <button
                 key={lvl}
                 onClick={() => setLevelFilter(lvl)}
-                className={`rounded-pill border px-3 py-2 text-xs font-medium transition-colors ${
+                className={`flex-none rounded-pill border px-3 py-2 text-xs font-medium transition-colors ${
                   levelFilter === lvl
                     ? 'border-ink-300 bg-ink-200 text-ink-700'
                     : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
@@ -164,26 +153,28 @@ export function StudentsPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
           <input
-            type="text"
-            placeholder="Search students..."
+            type="search"
+            placeholder="Search students"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-card-sm border border-ink-200 bg-white py-3 pl-11 pr-4 text-sm text-ink-700 shadow-card placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
+            className="h-10 w-full rounded-lg border border-ink-200 bg-white pl-10 pr-4 text-sm text-ink-700 placeholder:text-ink-300 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
           />
         </div>
         <button
           onClick={() => setShowArchived(!showArchived)}
-          className={`rounded-pill border px-4 py-2.5 text-sm font-medium transition-colors ${
+          aria-pressed={showArchived}
+          className={`flex h-10 flex-none items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-colors ${
             showArchived
-              ? 'border-ink-300 bg-ink-200 text-ink-700'
+              ? 'border-accent-charcoal bg-accent-charcoal text-white'
               : 'border-ink-200 bg-white text-ink-500 hover:bg-ink-50'
           }`}
         >
-          {showArchived ? 'Showing archived' : 'Show archived'}
+          <Archive className="h-3.5 w-3.5" />
+          Archived
         </button>
       </div>
 
@@ -208,70 +199,70 @@ export function StudentsPage() {
             {filtered.map((student) => (
               <div
                 key={student.id}
-                className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-ink-50/50 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+                className="group flex items-center gap-2 pr-2 transition-colors hover:bg-ink-50/60 sm:pr-4"
               >
-                <div className="flex items-center gap-4">
+                {/* The whole name block is the link, not just the name text —
+                    a full-row target instead of a few characters of text. */}
+                <Link
+                  to={`/students/${student.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-4 py-3.5 pl-4 sm:pl-6"
+                >
                   <StudentInitials student={student} />
                   <div className="min-w-0">
-                    <Link
-                      to={`/students/${student.id}`}
-                      className="text-sm font-medium text-ink-800 hover:text-ink-900"
-                    >
+                    <p className="truncate text-sm font-medium text-ink-800 group-hover:text-ink-900">
                       {displayName(student)}
-                    </Link>
+                    </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-400">
                       <span>{student.level}</span>
                       {!!student.age && <span>Age {student.age}</span>}
                       <span>{student.gender}</span>
-                      {student.phone && <span>{student.phone}</span>}
+                      {student.phone && <span className="hidden sm:inline">{student.phone}</span>}
                     </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 pl-14 sm:gap-3 sm:pl-0">
+                </Link>
+                <div className="flex flex-none items-center gap-2 sm:gap-3">
                   <Badge variant={groupLabel(student) === 'JDY' ? 'JDY' : 'BY'}>{groupLabel(student)}</Badge>
-                  <Badge variant={student.active ? 'active' : 'archived'}>
-                    {student.active ? 'Active' : 'Archived'}
-                  </Badge>
-                  <div className="flex items-center gap-1">
+                  {/* Only the exception is labelled — an "Active" pill on
+                      every row of an active list is noise. */}
+                  {!student.active && <Badge variant="archived">Archived</Badge>}
+                  <div className="flex items-center gap-1 transition-opacity sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
                     <button
                       onClick={() => setEditingStudent(student)}
-                      className="rounded-pill px-3 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                      className="flex items-center gap-1 rounded-pill p-2 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700 sm:px-3 sm:py-1.5"
+                      aria-label={`Edit ${displayName(student)}`}
                     >
-                      Edit
+                      <Pencil className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                      <span className="hidden sm:inline">Edit</span>
                     </button>
                     {student.active ? (
                       <button
                         onClick={() => handleArchive(student)}
-                        className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                        className="flex items-center gap-1 rounded-pill p-2 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700 sm:px-3 sm:py-1.5"
+                        aria-label={`Archive ${displayName(student)}`}
                       >
-                        <Archive className="h-3 w-3" />
-                        Archive
+                        <Archive className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                        <span className="hidden sm:inline">Archive</span>
                       </button>
                     ) : (
                       <>
                         <button
                           onClick={() => handleRestore(student)}
-                          className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-status-success transition-colors hover:bg-status-success-soft"
+                          className="flex items-center gap-1 rounded-pill p-2 text-xs font-medium text-status-success transition-colors hover:bg-status-success-soft sm:px-3 sm:py-1.5"
+                          aria-label={`Restore ${displayName(student)}`}
                         >
-                          <RotateCcw className="h-3 w-3" />
-                          Restore
+                          <RotateCcw className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                          <span className="hidden sm:inline">Restore</span>
                         </button>
                         <button
                           onClick={() => { setDeletingStudent(student); setDeleteConfirmText(''); }}
-                          className="flex items-center gap-1 rounded-pill px-3 py-1.5 text-xs font-medium text-status-danger transition-colors hover:bg-status-danger-soft"
+                          className="flex items-center gap-1 rounded-pill p-2 text-xs font-medium text-status-danger transition-colors hover:bg-status-danger-soft sm:px-3 sm:py-1.5"
+                          aria-label={`Delete ${displayName(student)}`}
                         >
-                          <Trash2 className="h-3 w-3" />
-                          Delete
+                          <Trash2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
+                          <span className="hidden sm:inline">Delete</span>
                         </button>
                       </>
                     )}
-                    <Link
-                      to={`/students/${student.id}`}
-                      className="rounded-full p-1.5 text-ink-300 transition-colors hover:bg-ink-100 hover:text-ink-600"
-                      aria-label={`View ${displayName(student)}`}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
                   </div>
                 </div>
               </div>

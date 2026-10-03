@@ -2,9 +2,10 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarOff, ArrowRight } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { PageSkeleton } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { EventPicker } from '../components/EventPicker';
+import { PageHeader } from '../components/PageHeader';
 import { EventAttendanceView } from '../components/EventAttendanceView';
 import { getTodayDateString, formatDate } from '../utils/dates';
 import type { CalendarEvent } from '../types';
@@ -30,18 +31,19 @@ export function AttendancePage() {
       : (upcomingEvents[0]?.id ?? null);
   const activeEvent = upcomingEvents.find((e) => e.id === activeEventId) ?? null;
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PageSkeleton />;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold tracking-tight-lg text-ink-900 md:text-5xl">Attendance</h1>
-        <p className="mt-2 text-base text-ink-400">
-          {activeEvent ? formatDate(activeEvent.event_date) : 'No upcoming events yet'}
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Session"
+        title="Attendance"
+        description={activeEvent ? `${activeEvent.name} · ${formatDate(activeEvent.event_date)}` : 'No upcoming events yet'}
+      />
 
-      {upcomingEvents.length > 0 && (
+      {/* One chip isn't a choice — only show the picker when there's more
+          than one upcoming event to switch between. */}
+      {upcomingEvents.length > 1 && (
         <EventPicker events={upcomingEvents} selectedId={activeEventId} onSelect={setSelectedEventId} />
       )}
 
@@ -60,7 +62,7 @@ export function AttendancePage() {
           }
         />
       ) : (
-        activeEventId && <EventAttendanceView eventId={activeEventId} />
+        activeEventId && <EventAttendanceView eventId={activeEventId} showHeader={false} />
       )}
     </div>
   );
