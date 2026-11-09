@@ -1,4 +1,4 @@
-import { format, nextSunday, isSunday, parse, addMinutes } from 'date-fns';
+import { format, nextSunday, isSunday, parse } from 'date-fns';
 
 export function getTodayDateString(): string {
   return format(new Date(), 'yyyy-MM-dd');
@@ -25,18 +25,4 @@ export function getSundaysBetween(startDate: Date, endDate: Date): string[] {
     current = nextSunday(current);
   }
   return sundays;
-}
-
-export function isLate(
-  checkInTimestamp: string,
-  sessionStartTime: string,
-  sessionDate: string,
-  lateThresholdMinutes: number,
-): boolean {
-  const checkIn = new Date(checkInTimestamp);
-  const [hours, minutes] = sessionStartTime.split(':').map(Number);
-  // +08:00 (Singapore, no DST) — matches computeAttendanceStatus server-side.
-  const start = new Date(`${sessionDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000+08:00`);
-  const threshold = addMinutes(start, lateThresholdMinutes);
-  return checkIn > threshold;
 }

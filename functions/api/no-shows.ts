@@ -1,6 +1,6 @@
 import { success } from './_shared/response';
 import { requireAuth } from './_shared/auth';
-import { calculateNoShows, getSettings } from './_shared/db';
+import { calculateNoShows, getSettings, reconcileAttendance } from './_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -10,6 +10,8 @@ interface Env {
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+
+  await reconcileAttendance(env.DB);
 
   const url = new URL(request.url);
   const group = url.searchParams.get('group') || undefined;

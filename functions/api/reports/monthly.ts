@@ -1,5 +1,6 @@
 import { success } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
+import { reconcileAttendance } from '../_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -9,7 +10,6 @@ interface Env {
 interface MonthRow {
   month: string;
   present: number;
-  late: number;
   absent: number;
   excused: number;
   total: number;
@@ -19,13 +19,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
 
+  await reconcileAttendance(env.DB);
+
   const url = new URL(request.url);
   const months = Math.min(parseInt(url.searchParams.get('months') || '6', 10), 24);
   const group = url.searchParams.get('group');
 
   const query = `SELECT substr(e.event_date, 1, 7) as month,
        SUM(CASE WHEN ear.status = 'present' THEN 1 ELSE 0 END) as present,
-       SUM(CASE WHEN ear.status = 'late' THEN 1 ELSE 0 END) as late,
        SUM(CASE WHEN ear.status = 'absent' THEN 1 ELSE 0 END) as absent,
        SUM(CASE WHEN ear.status = 'excused' THEN 1 ELSE 0 END) as excused,
        COUNT(*) as total
@@ -44,13 +45,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     .map((row) => ({
       month: row.month,
       present: row.present,
-      late: row.late,
       absent: row.absent,
       excused: row.excused,
       total: row.total,
       // Excused counts against the rate the same as absent — not excluded
       // from the denominator — so this stays consistent with weekly.ts.
-      attendance_rate: row.total > 0 ? Math.round(((row.present + row.late) / row.total) * 100) : 0,
+      attendance_rate: row.total > 0 ? Math.round((row.present / row.total) * 100) : 0,
     }))
     .reverse();
 

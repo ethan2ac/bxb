@@ -32,7 +32,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?')
     .bind(body.event_id)
-    .first<{ id: string; event_date: string; start_time: string; late_threshold_minutes: number }>();
+    .first<{ id: string; event_date: string }>();
 
   if (!event) return badRequest('Event not found');
 
@@ -57,14 +57,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .first();
     if (!studentExists) continue;
 
-    let status = entry.status;
+    let status = entry.status === 'late' ? 'present' : entry.status;
     if (entry.check_in_timestamp && status !== 'absent' && status !== 'excused') {
-      status = computeAttendanceStatus(
-        entry.check_in_timestamp,
-        event.start_time,
-        event.event_date,
-        event.late_threshold_minutes,
-      );
+      status = computeAttendanceStatus(entry.check_in_timestamp);
     }
 
     if (!validateAttendanceStatus(status)) {

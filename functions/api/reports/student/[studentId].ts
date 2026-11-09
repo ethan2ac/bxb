@@ -1,5 +1,6 @@
 import { success, notFound } from '../../_shared/response';
 import { requireAuth } from '../../_shared/auth';
+import { reconcileAttendance } from '../../_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -9,6 +10,8 @@ interface Env {
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+
+  await reconcileAttendance(env.DB);
 
   const studentId = params.studentId as string;
   const student = await env.DB.prepare('SELECT * FROM students WHERE id = ?')
@@ -20,7 +23,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   const statusFilter = url.searchParams.get('status');
-  const validStatus = statusFilter && ['present', 'absent', 'late', 'excused'].includes(statusFilter);
+  const validStatus = statusFilter && ['present', 'absent', 'excused'].includes(statusFilter);
 
   // The date column is aliased to `session_date` to keep the existing
   // frontend field name working unchanged.
@@ -53,7 +56,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 
   const total = records.results?.length || 0;
   const present = records.results?.filter((r) => r.status === 'present').length || 0;
-  const late = records.results?.filter((r) => r.status === 'late').length || 0;
   const absent = records.results?.filter((r) => r.status === 'absent').length || 0;
   const excused = records.results?.filter((r) => r.status === 'excused').length || 0;
 
@@ -63,12 +65,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     summary: {
       total,
       present,
-      late,
       absent,
       excused,
       // Excused counts against the rate the same as absent, consistent with
       // the weekly/monthly report endpoints.
-      attendance_rate: total > 0 ? Math.round(((present + late) / total) * 100) : 0,
+      attendance_rate: total > 0 ? Math.round((present / total) * 100) : 0,
     },
   });
 };

@@ -42,7 +42,7 @@ export interface CalendarEvent {
   updated_at: string;
 }
 
-export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+export type AttendanceStatus = 'present' | 'absent' | 'excused';
 
 export interface AttendanceRecord {
   id: string;
@@ -116,7 +116,6 @@ export interface TeamUser {
 export interface AttendanceSummary {
   total: number;
   present: number;
-  late: number;
   absent: number;
   excused: number;
   attendance_rate: number;
@@ -129,7 +128,6 @@ export interface WeeklyReport {
   occurrence_name: string | null;
   enrolled: number;
   present: number;
-  late: number;
   absent: number;
   excused: number;
   total: number;
@@ -150,7 +148,6 @@ export interface UpcomingForecast {
 export interface MonthlyTrend {
   month: string;
   present: number;
-  late: number;
   absent: number;
   excused: number;
   total: number;

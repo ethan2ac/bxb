@@ -1,6 +1,5 @@
 const variants = {
   present: 'bg-status-success-soft text-status-success',
-  late: 'bg-accent-yellow-soft text-accent-yellow-text',
   absent: 'bg-status-danger-soft text-status-danger',
   excused: 'bg-status-info-soft text-status-info',
   active: 'bg-status-info-soft text-status-info',

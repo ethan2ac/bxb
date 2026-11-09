@@ -27,23 +27,9 @@ interface RosterEntry {
 const STATUS_OPTIONS: { value: AttendanceStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'present', label: 'Present' },
-  { value: 'late', label: 'Late' },
   { value: 'excused', label: 'Excused' },
   { value: 'absent', label: 'Absent' },
 ];
-
-// Singapore doesn't observe DST, so +08:00 is always correct — matches
-// computeAttendanceStatus server-side. A bare "Z" here would treat the
-// admin's wall-clock start time as UTC (5pm instead of 9am), making the
-// live preview disagree with what gets saved.
-function computeLiveStatus(checkInIso: string, event: CalendarEvent): 'present' | 'late' {
-  const [h, m] = event.start_time.split(':').map(Number);
-  const threshold = new Date(
-    `${event.event_date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000+08:00`,
-  );
-  threshold.setUTCMinutes(threshold.getUTCMinutes() + event.late_threshold_minutes);
-  return new Date(checkInIso) > threshold ? 'late' : 'present';
-}
 
 // A "said yes but not here" flag is only meaningful once the class has
 // actually begun — before start time, no-show is just wrong.
@@ -69,8 +55,6 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
   const [sortBy, setSortBy] = useState<SortBy>('level');
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | 'all'>('all');
   const [loading, setLoading] = useState(false);
-  const [lateThresholdDraft, setLateThresholdDraft] = useState('');
-  const [savingThreshold, setSavingThreshold] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const notesSaveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -86,7 +70,6 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
     try {
       const eventData = await api.get<CalendarEvent>(`/api/events/${eventId}`);
       setEvent(eventData);
-      setLateThresholdDraft(String(eventData.late_threshold_minutes));
 
       const [students, attendanceData, forecastData] = await Promise.all([
         api.get<Student[]>(`/api/events/${eventId}/roster`),
@@ -165,12 +148,10 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
         if (entry.student.id !== studentId) return entry;
 
         if (entry.status === 'absent') {
-          const ts = new Date().toISOString();
-          const status: AttendanceStatus = event ? computeLiveStatus(ts, event) : 'present';
-          return { ...entry, status, check_in_timestamp: ts };
+          return { ...entry, status: 'present', check_in_timestamp: new Date().toISOString() };
         }
 
-        if (entry.status === 'present' || entry.status === 'late') {
+        if (entry.status === 'present') {
           return { ...entry, status: 'excused', check_in_timestamp: null };
         }
 
@@ -181,44 +162,6 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
       if (updated) persistEntry(updated);
       return next;
     });
-  };
-
-  const saveLateThreshold = async () => {
-    if (!event) return;
-    const minutes = parseInt(lateThresholdDraft, 10);
-    if (!Number.isInteger(minutes) || minutes < 1) {
-      addToast('Late threshold must be a positive number of minutes', 'error');
-      return;
-    }
-    setSavingThreshold(true);
-    try {
-      const updated = await api.put<CalendarEvent>(`/api/events/${event.id}`, {
-        name: event.name,
-        event_date: event.event_date,
-        group_scope: event.group_scope,
-        start_time: event.start_time,
-        late_threshold_minutes: minutes,
-        notes: event.notes,
-        restricted_roster: event.restricted_roster === 1,
-        invitee_student_ids: event.invitee_student_ids,
-      });
-      setEvent(updated);
-      // Re-evaluate everyone already checked in against the new threshold
-      // immediately, rather than leaving badges showing a stale present/late
-      // split until the next tap or page reload.
-      setRoster((prev) =>
-        prev.map((entry) =>
-          entry.check_in_timestamp
-            ? { ...entry, status: computeLiveStatus(entry.check_in_timestamp, updated) }
-            : entry,
-        ),
-      );
-      addToast('Late threshold updated', 'success');
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : 'Failed to update late threshold', 'error');
-    } finally {
-      setSavingThreshold(false);
-    }
   };
 
   const handleNotesChange = (studentId: string, value: string) => {
@@ -262,7 +205,7 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
   const jdyRoster = filteredRoster.filter((e) => e.student.group_name === 'JDY');
 
   const groupStats = (entries: RosterEntry[]) => {
-    const here = entries.filter((e) => e.status === 'present' || e.status === 'late').length;
+    const here = entries.filter((e) => e.status === 'present').length;
     return { here, notHere: entries.length - here, total: entries.length };
   };
   const byStats = groupStats(roster.filter((e) => e.student.group_name === 'BY'));
@@ -277,12 +220,12 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
   // glance, distinct from a plain unexplained absence. Held back until the
   // event's start time actually passes (checking in early doesn't make
   // everyone else a no-show yet), and clears the instant a tap marks someone
-  // present/late since noShowIds is recomputed from live roster state.
+  // present since noShowIds is recomputed from live roster state.
   const noShowIds =
     event && hasEventStarted(event, nowMs)
       ? new Set(
           roster
-            .filter((entry) => forecastByStudent.get(entry.student.id) === 'yes' && entry.status !== 'present' && entry.status !== 'late')
+            .filter((entry) => forecastByStudent.get(entry.student.id) === 'yes' && entry.status !== 'present')
             .map((entry) => entry.student.id),
         )
       : new Set<string>();
@@ -315,7 +258,7 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
   const isPast = event.event_date < getTodayDateString();
 
   const statusCount = (status: AttendanceStatus) => roster.filter((e) => e.status === status).length;
-  const hereCount = statusCount('present') + statusCount('late');
+  const hereCount = statusCount('present');
 
   return (
     <div className="space-y-6">
@@ -467,32 +410,6 @@ export function EventAttendanceView({ eventId, showHeader = true }: { eventId: s
               <div className="flex justify-between">
                 <span className="text-ink-400">Start time</span>
                 <span className="font-medium text-ink-700">{event.start_time}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex-shrink-0 text-ink-400">Late after</span>
-                {isPast ? (
-                  <span className="font-medium text-ink-700">{event.late_threshold_minutes} min</span>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min={1}
-                      value={lateThresholdDraft}
-                      onChange={(e) => setLateThresholdDraft(e.target.value)}
-                      className="w-16 rounded-card-sm border border-ink-200 bg-ink-50/50 px-2 py-1 text-right text-sm text-ink-700 focus:border-ink-400 focus:outline-none focus:ring-1 focus:ring-ink-400"
-                    />
-                    <span className="text-ink-400">min</span>
-                    {lateThresholdDraft !== String(event.late_threshold_minutes) && (
-                      <button
-                        onClick={saveLateThreshold}
-                        disabled={savingThreshold}
-                        className="rounded-pill bg-accent-charcoal px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-accent-dark disabled:opacity-50"
-                      >
-                        {savingThreshold ? '...' : 'Update'}
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>

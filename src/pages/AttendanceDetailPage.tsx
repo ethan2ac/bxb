@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, UserCheck, Clock, CalendarClock, UserX, Pencil } from 'lucide-react';
+import { ArrowLeft, Search, UserCheck, CalendarClock, UserX, Pencil } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { useUiStore } from '../store/ui';
@@ -21,7 +21,6 @@ interface EventResponse {
 const STATUS_TABS: { value: AttendanceStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'present', label: 'Present' },
-  { value: 'late', label: 'Late' },
   { value: 'excused', label: 'Excused' },
   { value: 'absent', label: 'Absent' },
 ];
@@ -33,7 +32,6 @@ function scopeLabel(scope: string): string {
 
 const AMEND_STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
-  { value: 'late', label: 'Late' },
   { value: 'excused', label: 'Excused' },
   { value: 'absent', label: 'Absent' },
 ];
@@ -81,12 +79,12 @@ export function AttendanceDetailPage() {
   const records: DetailRecord[] = data?.records ?? [];
 
   const counts = useMemo(() => {
-    const c = { present: 0, late: 0, excused: 0, absent: 0 };
+    const c = { present: 0, excused: 0, absent: 0 };
     for (const r of records) c[r.status as keyof typeof c]++;
     return c;
   }, [records]);
   const total = records.length;
-  const attendanceRate = total > 0 ? Math.round(((counts.present + counts.late) / total) * 100) : 0;
+  const attendanceRate = total > 0 ? Math.round((counts.present / total) * 100) : 0;
 
   const filteredRecords = records.filter((r) => {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
@@ -125,7 +123,7 @@ export function AttendanceDetailPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
@@ -144,17 +142,6 @@ export function AttendanceDetailPage() {
               <p className="mt-2 text-2xl font-bold tracking-tight-lg text-ink-900 sm:text-3xl">{counts.present}</p>
             </div>
             <UserCheck className="h-5 w-5 text-ink-300" />
-          </div>
-        </div>
-        <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
-              <p className="mt-2 text-2xl font-bold tracking-tight-lg text-accent-yellow-text sm:text-3xl">
-                {counts.late}
-              </p>
-            </div>
-            <Clock className="h-5 w-5 text-ink-300" />
           </div>
         </div>
         <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
@@ -219,7 +206,7 @@ export function AttendanceDetailPage() {
               <div
                 key={record.id}
                 className={`flex items-center justify-between gap-3 px-5 py-3.5 transition-colors sm:px-7 ${
-                  record.status === 'late' ? 'bg-accent-yellow-soft' : 'hover:bg-ink-50/50'
+                  'hover:bg-ink-50/50'
                 }`}
               >
                 <div className="min-w-0">

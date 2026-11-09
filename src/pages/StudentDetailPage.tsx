@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, UserCheck, UserX, CalendarClock, History as HistoryIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, UserCheck, UserX, CalendarClock, History as HistoryIcon } from 'lucide-react';
 import { api } from '../lib/api';
 import { useApi } from '../hooks/useApi';
 import { LoadingSpinner, PageSkeleton } from '../components/LoadingSpinner';
@@ -65,7 +65,7 @@ export function StudentDetailPage() {
   if (!data) return <div className="p-12 text-center text-ink-400">Student not found</div>;
 
   const { student, records, summary } = data;
-  const lastAttended = records.find((r) => r.status === 'present' || r.status === 'late');
+  const lastAttended = records.find((r) => r.status === 'present');
   const pctRate = summary.attendance_rate;
   const displayedRecords = filteredRecords ?? records;
 
@@ -127,7 +127,7 @@ export function StudentDetailPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
           <div className="flex items-start justify-between">
             <div>
@@ -144,15 +144,6 @@ export function StudentDetailPage() {
               <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-ink-900">{summary.present}</p>
             </div>
             <Calendar className="h-5 w-5 text-ink-300" />
-          </div>
-        </div>
-        <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Late</p>
-              <p className="mt-2 text-2xl font-bold tracking-tight-lg sm:text-3xl text-accent-yellow-text">{summary.late}</p>
-            </div>
-            <Clock className="h-5 w-5 text-ink-300" />
           </div>
         </div>
         <div className="rounded-card border border-ink-100 bg-white p-4 shadow-card sm:p-6">
@@ -194,7 +185,6 @@ export function StudentDetailPage() {
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={inputClass}>
                   <option value="">All</option>
                   <option value="present">Present</option>
-                  <option value="late">Late</option>
                   <option value="excused">Excused</option>
                   <option value="absent">Absent</option>
                 </select>
@@ -236,7 +226,7 @@ export function StudentDetailPage() {
                   <div
                     key={record.id}
                     className={`flex items-center justify-between px-7 py-4 transition-colors ${
-                      record.status === 'late' ? 'bg-accent-yellow-soft' : 'hover:bg-ink-50/50'
+                      'hover:bg-ink-50/50'
                     }`}
                   >
                     <div>

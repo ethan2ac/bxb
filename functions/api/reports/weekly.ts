@@ -1,6 +1,6 @@
 import { success } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
-import { getOrgTodayDate } from '../_shared/db';
+import { getOrgTodayDate, reconcileAttendance } from '../_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -14,7 +14,6 @@ interface WeeklyRow {
   occurrence_name: string | null;
   enrolled: number;
   present: number;
-  late: number;
   absent: number;
   excused: number;
   total: number;
@@ -24,6 +23,8 @@ interface WeeklyRow {
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
+
+  await reconcileAttendance(env.DB);
 
   const url = new URL(request.url);
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
@@ -57,7 +58,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       ? `SELECT
            COUNT(*) as total,
            SUM(CASE WHEN ear.status = 'present' THEN 1 ELSE 0 END) as present,
-           SUM(CASE WHEN ear.status = 'late' THEN 1 ELSE 0 END) as late,
            SUM(CASE WHEN ear.status = 'absent' THEN 1 ELSE 0 END) as absent,
            SUM(CASE WHEN ear.status = 'excused' THEN 1 ELSE 0 END) as excused
          FROM event_attendance_records ear
@@ -66,18 +66,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       : `SELECT
            COUNT(*) as total,
            SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
-           SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
            SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent,
            SUM(CASE WHEN status = 'excused' THEN 1 ELSE 0 END) as excused
          FROM event_attendance_records
          WHERE event_id = ?`;
     const stats = await env.DB.prepare(statsQuery)
       .bind(...(group ? [eventId, group] : [eventId]))
-      .first<{ total: number; present: number; late: number; absent: number; excused: number }>();
+      .first<{ total: number; present: number; absent: number; excused: number }>();
 
     const total = stats?.total || 0;
     const present = stats?.present || 0;
-    const late = stats?.late || 0;
     const absent = stats?.absent || 0;
     const excused = stats?.excused || 0;
 
@@ -89,7 +87,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     // Excused counts against the rate the same as absent (not excluded from
     // the denominator) so the rate/trend stays consistent with the raw
-    // present+late+absent+excused breakdown shown elsewhere on the page.
+    // present+absent+excused breakdown shown elsewhere on the page.
     weeks.push({
       occurrence_type: 'event',
       occurrence_id: eventId,
@@ -97,11 +95,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       occurrence_name: event.name as string,
       enrolled,
       present,
-      late,
       absent,
       excused,
       total,
-      attendance_rate: enrolled > 0 ? Math.round(((present + late) / enrolled) * 100) : 0,
+      attendance_rate: enrolled > 0 ? Math.round((present / enrolled) * 100) : 0,
     });
   }
 

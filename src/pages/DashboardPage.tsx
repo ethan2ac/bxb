@@ -46,7 +46,7 @@ export function DashboardPage() {
   const noShowCount = noShows?.length || 0;
 
   const totalRecorded = latestWeek
-    ? latestWeek.present + latestWeek.late + latestWeek.absent + latestWeek.excused
+    ? latestWeek.present + latestWeek.absent + latestWeek.excused
     : 0;
 
   return (
@@ -76,12 +76,11 @@ export function DashboardPage() {
               {latestWeek.occurrence_name && ` · ${latestWeek.occurrence_name}`}
             </h2>
             <span className="rounded-pill bg-ink-100 px-3 py-1 text-xs font-medium text-ink-500">
-              {latestWeek.present + latestWeek.late}/{latestWeek.enrolled} attended
+              {latestWeek.present}/{latestWeek.enrolled} attended
             </span>
           </div>
           <div className="space-y-3">
             <ProgressBar label="Present" value={latestWeek.present} total={totalRecorded} color="bg-status-success" />
-            <ProgressBar label="Late" value={latestWeek.late} total={totalRecorded} color="bg-accent-yellow" />
             <ProgressBar label="Excused" value={latestWeek.excused} total={totalRecorded} color="bg-status-info" />
             <ProgressBar label="Absent" value={latestWeek.absent} total={totalRecorded} color="bg-status-danger/60" />
           </div>
@@ -215,12 +214,11 @@ export function DashboardPage() {
                       )}
                     </p>
                     <p className="text-xs text-ink-400">
-                      {week.present + week.late}/{week.enrolled} attended
+                      {week.present}/{week.enrolled} attended
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {week.late > 0 && <Badge variant="late">{week.late} late</Badge>}
                   {week.excused > 0 && <Badge variant="excused">{week.excused} excused</Badge>}
                   {week.absent > 0 && <Badge variant="absent">{week.absent} absent</Badge>}
                   <span className="min-w-[3rem] text-right text-sm font-semibold text-ink-600">

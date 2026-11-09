@@ -1,5 +1,6 @@
 import { success, badRequest } from '../_shared/response';
 import { requireAuth } from '../_shared/auth';
+import { reconcileAttendance } from '../_shared/db';
 
 interface Env {
   DB: D1Database;
@@ -16,6 +17,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!eventId) {
     return badRequest('eventId query parameter is required');
   }
+
+  await reconcileAttendance(env.DB);
 
   const event = await env.DB.prepare('SELECT * FROM events WHERE id = ?')
     .bind(eventId)

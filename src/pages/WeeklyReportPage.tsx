@@ -80,16 +80,13 @@ export function WeeklyReportPage() {
                         )}
                       </p>
                       <p className="mt-0.5 text-xs text-ink-400">
-                        {week.present + week.late}/{week.enrolled} attended
+                        {week.present}/{week.enrolled} attended
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="hidden items-center gap-4 text-sm sm:flex">
                         <span className="w-24 whitespace-nowrap text-status-success font-medium">
                           {week.present} present
-                        </span>
-                        <span className="w-20 whitespace-nowrap text-accent-yellow-text font-medium">
-                          {week.late} late
                         </span>
                         <span
                           className={`w-24 whitespace-nowrap font-medium ${week.excused > 0 ? 'text-status-info' : 'text-ink-300'}`}

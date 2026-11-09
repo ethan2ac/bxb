@@ -76,8 +76,8 @@ export function validateSession(body: Record<string, unknown>): ValidationError[
 
 export function validateAttendanceStatus(
   status: unknown,
-): status is 'present' | 'absent' | 'late' | 'excused' {
-  return status === 'present' || status === 'absent' || status === 'late' || status === 'excused';
+): status is 'present' | 'absent' | 'excused' {
+  return status === 'present' || status === 'absent' || status === 'excused';
 }
 
 export function validateEvent(body: Record<string, unknown>): ValidationError[] {

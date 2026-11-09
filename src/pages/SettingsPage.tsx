@@ -21,6 +21,7 @@ const ACTION_LABELS: Record<string, string> = {
   forecast_save: 'saved a forecast for',
   register: 'registered as a new',
   reset_password: 'reset the password for',
+  auto_absent: 'recorded unmarked students as absent for past',
 };
 
 export function SettingsPage() {
@@ -29,7 +30,6 @@ export function SettingsPage() {
   const { data: logs, loading: loadingLogs, refetch: refetchLogs } = useApi<AuditLog[]>('/api/audit-logs?limit=15');
 
   const [startTime, setStartTime] = useState('09:00');
-  const [threshold, setThreshold] = useState(60);
   const [noShowThreshold, setNoShowThreshold] = useState(3);
   const [saving, setSaving] = useState(false);
   const [timezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -37,7 +37,6 @@ export function SettingsPage() {
   useEffect(() => {
     if (settings) {
       setStartTime(settings.default_start_time);
-      setThreshold(parseInt(settings.default_late_threshold_minutes, 10));
       setNoShowThreshold(parseInt(settings.no_show_threshold, 10));
     }
   }, [settings]);
@@ -47,7 +46,6 @@ export function SettingsPage() {
     try {
       await api.put('/api/settings', {
         default_start_time: startTime,
-        default_late_threshold_minutes: threshold,
         no_show_threshold: noShowThreshold,
       });
       addToast('Settings saved', 'success');
@@ -82,25 +80,7 @@ export function SettingsPage() {
                   className={inputClass}
                 />
                 <p className="mt-1.5 text-xs text-ink-400">
-                  New sessions default to this start time. Students checking in after this time + threshold are marked late.
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="threshold" className="block text-xs font-medium uppercase tracking-wider text-ink-400">
-                  Late Threshold (minutes)
-                </label>
-                <input
-                  id="threshold"
-                  type="number"
-                  min={1}
-                  max={240}
-                  value={threshold}
-                  onChange={(e) => setThreshold(parseInt(e.target.value, 10) || 60)}
-                  className={inputClass}
-                />
-                <p className="mt-1.5 text-xs text-ink-400">
-                  Minutes after start time before a student is considered late
+                  New events default to this start time.
                 </p>
               </div>
 

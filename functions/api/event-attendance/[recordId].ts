@@ -26,9 +26,10 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   if (!record) return notFound('Event attendance record not found');
 
   const body = await request.json<{ status?: string; reason?: string }>();
+  if (body.status === 'late') body.status = 'present';
 
   if (!validateAttendanceStatus(body.status)) {
-    return badRequest('Invalid status. Must be present, absent, late, or excused');
+    return badRequest('Invalid status. Must be present, absent, or excused');
   }
   if (!isNonEmptyString(body.reason)) {
     return badRequest('A reason is required to amend attendance');

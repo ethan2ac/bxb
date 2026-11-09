@@ -1,4 +1,4 @@
-import { Check, X as XIcon, Clock, CalendarOff, AlertTriangle } from 'lucide-react';
+import { Check, X as XIcon, CalendarOff, AlertTriangle } from 'lucide-react';
 import { Badge } from './Badge';
 import { displayName } from '../utils/students';
 import { formatTime } from '../utils/dates';
@@ -20,7 +20,7 @@ interface RosterPanelProps {
   locked?: boolean;
   // Student IDs to call out as "said yes on the forecast, not here" —
   // rendered with a distinct red treatment so it reads at a glance,
-  // separate from the routine present/late/excused/absent badges.
+  // separate from the routine present/excused/absent badges.
   flaggedIds?: Set<string>;
 }
 
@@ -53,11 +53,7 @@ export function RosterPanel({
                 <div
                   key={entry.student.id}
                   className={`px-4 py-3.5 transition-colors sm:px-6 sm:py-4 ${
-                    isFlagged
-                      ? 'bg-status-danger-soft'
-                      : entry.status === 'late'
-                        ? 'bg-accent-yellow-soft'
-                        : 'hover:bg-ink-50/50'
+                    isFlagged ? 'bg-status-danger-soft' : 'hover:bg-ink-50/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -70,11 +66,9 @@ export function RosterPanel({
                         } ${
                           entry.status === 'present'
                             ? 'bg-status-success text-white shadow-sm'
-                            : entry.status === 'late'
-                              ? 'bg-accent-yellow text-white shadow-sm'
-                              : entry.status === 'excused'
-                                ? 'bg-status-info text-white shadow-sm'
-                                : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
+                            : entry.status === 'excused'
+                              ? 'bg-status-info text-white shadow-sm'
+                              : 'border-2 border-ink-200 text-ink-300 hover:border-ink-300'
                         }`}
                         aria-label={`Toggle attendance for ${displayName(entry.student)}`}
                       >
@@ -89,7 +83,7 @@ export function RosterPanel({
                       <div>
                         <p
                           className={`text-sm font-medium ${
-                            isFlagged ? 'text-status-danger' : entry.status === 'late' ? 'text-accent-yellow-text' : 'text-ink-800'
+                            isFlagged ? 'text-status-danger' : 'text-ink-800'
                           }`}
                         >
                           {displayName(entry.student)}
@@ -109,12 +103,6 @@ export function RosterPanel({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {entry.status === 'late' && (
-                        <Badge variant="late">
-                          <Clock className="mr-0.5 h-3 w-3" />
-                          Late
-                        </Badge>
-                      )}
                       {entry.status === 'present' && <Badge variant="present">Present</Badge>}
                       {entry.status === 'absent' && <Badge variant="absent">Absent</Badge>}
                       {entry.status === 'excused' && <Badge variant="excused">Excused</Badge>}

@@ -9,7 +9,6 @@ export interface EventFormData {
   event_date: string;
   group_scope: GroupScope;
   start_time: string;
-  late_threshold_minutes: number;
   notes: string;
   restricted_roster: boolean;
   invitee_student_ids: string[];
@@ -31,7 +30,6 @@ export function eventFormDataFrom(event: CalendarEvent): EventFormData {
     event_date: event.event_date,
     group_scope: event.group_scope,
     start_time: event.start_time,
-    late_threshold_minutes: event.late_threshold_minutes,
     notes: event.notes ?? '',
     restricted_roster: !!event.restricted_roster,
     invitee_student_ids: event.invitee_student_ids ?? [],
@@ -181,7 +179,6 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
     event_date: initial?.event_date || '',
     group_scope: initial?.group_scope || 'BOTH',
     start_time: initial?.start_time || '09:00',
-    late_threshold_minutes: initial?.late_threshold_minutes ?? 60,
     notes: initial?.notes || '',
     restricted_roster: initial?.restricted_roster ?? false,
     invitee_student_ids: initial?.invitee_student_ids ?? [],
@@ -189,17 +186,15 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // New events take their start time / late threshold from Settings rather
-  // than hardcoded values, so changing the default there actually applies.
-  // Only fills fields the caller didn't supply (editing keeps the event's own).
+  // New events take their start time from Settings rather than a hardcoded
+  // value, so changing the default there actually applies. Only fills it when
+  // the caller didn't supply one (editing keeps the event's own).
   const { data: settings } = useApi<AppSettings>('/api/settings');
   useEffect(() => {
     if (!settings) return;
     setForm((f) => ({
       ...f,
       start_time: initial?.start_time ?? settings.default_start_time,
-      late_threshold_minutes:
-        initial?.late_threshold_minutes ?? (parseInt(settings.default_late_threshold_minutes, 10) || 60),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -273,7 +268,7 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
           </select>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div>
         <div>
           <label htmlFor="start_time" className="block text-sm font-medium text-ink-600">
             Start Time
@@ -284,20 +279,6 @@ export function EventForm({ initial, onSubmit, onCancel, submitLabel = 'Save' }:
             required
             value={form.start_time}
             onChange={(e) => setForm({ ...form, start_time: e.target.value })}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label htmlFor="late_threshold_minutes" className="block text-sm font-medium text-ink-600">
-            Late Threshold (min)
-          </label>
-          <input
-            id="late_threshold_minutes"
-            type="number"
-            min={1}
-            required
-            value={form.late_threshold_minutes}
-            onChange={(e) => setForm({ ...form, late_threshold_minutes: parseInt(e.target.value, 10) || 60 })}
             className={inputClass}
           />
         </div>

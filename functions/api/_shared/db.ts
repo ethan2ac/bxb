@@ -35,32 +35,63 @@ export async function getSettings(db: D1Database): Promise<SettingsMap> {
   return settings;
 }
 
-// Singapore doesn't observe DST, so +08:00 is always correct — this is a
-// fixed-timezone app, not a per-user-timezone one. Building the threshold
-// with an explicit offset (rather than a bare "Z", which silently treats a
-// wall-clock "09:00" as 09:00 UTC = 5pm SGT) is what makes "late" match what
-// the admin actually typed into the start-time field.
-const ORG_UTC_OFFSET = '+08:00';
+// A check-in is simply "present" — the app no longer distinguishes late
+// arrivals (in practice "late" mostly reflected when staff entered attendance,
+// not when students arrived).
+export function computeAttendanceStatus(checkInTimestamp: string | null): 'present' | 'absent' {
+  return checkInTimestamp ? 'present' : 'absent';
+}
 
-export function computeAttendanceStatus(
-  checkInTimestamp: string | null,
-  sessionStartTime: string,
-  sessionDate: string,
-  lateThresholdMinutes: number,
-): 'present' | 'absent' | 'late' {
-  if (!checkInTimestamp) return 'absent';
-  const checkIn = new Date(checkInTimestamp);
-  const [hours, minutes] = sessionStartTime.split(':').map(Number);
-  // sessionDate must be the occurrence's own date (event_date/session_date),
-  // never derived from checkInTimestamp — during the SGT midnight-8am window
-  // a check-in's own UTC date lags a full calendar day behind the true SGT
-  // date, which previously misdated the threshold and made genuinely early
-  // check-ins compute as late.
-  const threshold = new Date(
-    `${sessionDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000${ORG_UTC_OFFSET}`,
-  );
-  threshold.setUTCMinutes(threshold.getUTCMinutes() + lateThresholdMinutes);
-  return checkIn > threshold ? 'late' : 'present';
+// Brings stored attendance in line with how it should be read. Idempotent and
+// cheap once caught up, so report endpoints call it before reading.
+//
+// 1. Folds any legacy 'late' rows into 'present'.
+// 2. Since attendance saves per tap, a student nobody marked has no row at
+//    all, which made them vanish from History instead of counting as absent.
+//    Once an event's date has passed, every rostered student without a row
+//    gets one: 'excused' (with the forecast's note) if their forecast said
+//    excused, otherwise 'absent'. Only groups with at least one record at that
+//    event are filled in — no records for a group means attendance wasn't
+//    taken for it, not that everyone missed. Students created after the event
+//    are skipped. INSERT OR IGNORE makes concurrent calls safe.
+export async function reconcileAttendance(db: D1Database): Promise<void> {
+  const ts = now();
+  const today = getOrgTodayDate();
+  const [, filled] = await db.batch([
+    db.prepare("UPDATE event_attendance_records SET status = 'present', updated_at = ? WHERE status = 'late'").bind(ts),
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO event_attendance_records (id, student_id, event_id, status, check_in_timestamp, notes, created_at, updated_at)
+         SELECT 'eatt_' || lower(hex(randomblob(6))), s.id, e.id,
+           CASE WHEN f.expected = 'excused' THEN 'excused' ELSE 'absent' END,
+           NULL,
+           CASE WHEN f.expected = 'excused' THEN COALESCE(NULLIF(f.notes, ''), 'Excused on forecast') ELSE 'Not marked' END,
+           ?, ?
+         FROM events e
+         JOIN students s ON s.active = 1
+           AND (e.group_scope = 'BOTH' OR s.group_name = e.group_scope)
+           AND substr(s.created_at, 1, 10) <= e.event_date
+         LEFT JOIN forecasts f ON f.event_id = e.id AND f.student_id = s.id
+         WHERE e.event_date < ?
+           AND (e.restricted_roster = 0 OR EXISTS (SELECT 1 FROM event_invitees ei WHERE ei.event_id = e.id AND ei.student_id = s.id))
+           AND NOT EXISTS (SELECT 1 FROM event_attendance_records r WHERE r.event_id = e.id AND r.student_id = s.id)
+           AND EXISTS (
+             SELECT 1 FROM event_attendance_records r2 JOIN students s2 ON s2.id = r2.student_id
+             WHERE r2.event_id = e.id AND s2.group_name = s.group_name
+           )`,
+      )
+      .bind(ts, ts, today),
+  ]);
+  const inserted = filled.meta?.changes ?? 0;
+  if (inserted > 0) {
+    await db
+      .prepare(
+        `INSERT INTO audit_logs (id, actor_user_id, entity_type, entity_id, action, metadata, created_at)
+         VALUES (?, NULL, 'event', 'auto-absent', 'auto_absent', ?, ?)`,
+      )
+      .bind(generateId('log'), JSON.stringify({ recordsAdded: inserted, before: today }), ts)
+      .run();
+  }
 }
 
 export interface NoShowStudent {
@@ -186,7 +217,7 @@ export async function calculateNoShows(
     for (const occurrence of occurrences) {
       if (!occurrenceAppliesToGroup(occurrence, student.group_name)) continue;
       const status = eventStatusById.get(occurrence.id);
-      if (status === 'present' || status === 'late') {
+      if (status === 'present') {
         if (!lastAttended) lastAttended = occurrence.date;
         break;
       }
@@ -199,7 +230,7 @@ export async function calculateNoShows(
     if (consecutiveAbsences > threshold) {
       if (!lastAttended) {
         for (const r of allRecords) {
-          if (r.status === 'present' || r.status === 'late') {
+          if (r.status === 'present') {
             lastAttended = r.date;
             break;
           }
